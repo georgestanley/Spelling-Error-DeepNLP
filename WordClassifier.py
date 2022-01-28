@@ -9,6 +9,10 @@
 # 7. Implement it as docker.
 
 # source : https://www.geeksforgeeks.org/nlp-wordlist-corpus/
+#source:https://pytorch.org/tutorials/intermediate/char_rnn_classification_tutorial.html
+
+#observations:
+#the network starts outputing 0 towards later stages.
 import random
 
 import numpy
@@ -26,14 +30,15 @@ import matplotlib.ticker as ticker
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
 n_iters = 100000
-print_every = 5000
+print_every = 1000
 plot_every = 1000
 
 
 def preapre_dataset():
     # worldlist10000 source: MIT
 
-    x = WordListCorpusReader('.', ['datasets/wordlist.10000.txt'])
+    #x = WordListCorpusReader('.', ['datasets/wordlist.10000.txt'])
+    x = WordListCorpusReader('.', ['datasets/Oxford5000.txt'])
     print("Lenght =", len(x.words()))
     words = x.words()
     # print(words)
@@ -140,13 +145,15 @@ class RNN(nn.Module):
 
         self.hidden_size = hidden_size
 
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        self.i2o = nn.Linear(input_size + hidden_size, output_size)
+        #self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
+        self.i2h = nn.LSTM(input_size,hidden_size)
+        #self.i2o = nn.Linear(input_size + hidden_size, output_size)
+        self.i2h = nn.LSTM(input_size,hidden_size)
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input, hidden):
         combined = torch.cat((input, hidden), 1)
-        hidden = self.i2h(combined)
+        hidden = self.i2h(input,hidden)
         output = self.i2o(combined)
         output = self.softmax(output)
         return output, hidden
@@ -203,11 +210,13 @@ def main():
     n_hidden = 128
     #model = MLPNetwork()
     model = RNN(n_letters,n_hidden,n_classes)
+    #model2 = nn.LSTM(input_size=n_letters,hidden_size=n_hidden)
     criterion = nn.NLLLoss()
 
-    #word = lineToTensor(data_arr[0][0])
-    #output, hidden = model(word[0],torch.zeros(1, n_hidden))
-    #result = torch.tensor([ int(data_arr[0][1])], dtype=torch.long)
+    word = lineToTensor(data_arr[0][0])
+    #op = model2(word,torch.zeros(1,n_hidden))
+    output, hidden = model(word[0],torch.zeros(1, n_hidden))
+    result = torch.tensor([ int(data_arr[0][1])], dtype=torch.long)
     #l = criterion(output,result)
 
     # Keep track of losses for plotting
@@ -215,8 +224,9 @@ def main():
     all_losses = []
 
     for iter in range(1, n_iters + 1):
-        if iter%1000==0:
-            print('Iter:',iter)
+        #if iter%1000==0:
+            #print('Iter:',iter)
+            #pass
         index = randomIndex(data_arr.shape[0])
         if len(data_arr[index][0])==0:
             continue
