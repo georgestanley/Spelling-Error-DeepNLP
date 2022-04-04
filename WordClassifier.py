@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from Model import MLPNetwork,RNN
 import torch.optim as optim
-import sys
+import sys,random
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -74,8 +74,6 @@ def randomTrainingExample(data_arr):
     word = lineToTensor(data_arr[index][0])
     result = torch.tensor([int(data_arr[index][1])], dtype=torch.long)
     return word,result
-
-    pass
 
 
 def randomIndex(max_len):
@@ -161,8 +159,8 @@ def main():
 
         word = lineToTensor(data_arr[0][0])
         #op = model2(word,torch.zeros(1,n_hidden))
-        output, hidden = model(word[0],torch.zeros(1, n_hidden))
-        result = torch.tensor([ int(data_arr[0][1])], dtype=torch.long)
+        #output, hidden = model(word[0],torch.zeros(1, n_hidden))
+        #result = torch.tensor([ int(data_arr[0][1])], dtype=torch.long)
         #l = criterion(output,result)
 
         # Keep track of losses for plotting
@@ -208,32 +206,27 @@ def main():
 
 
         #print(X_train.shape)
-        model = MLPNetwork(input_dim=228,output_dim=1)
+        model = MLPNetwork(input_dim=228,output_dim=2)
 
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+        criterion= nn.CrossEntropyLoss()
+        optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.5)
 
         for e in range(num_epochs):
 
             for i  in range(X_train.shape[0]):
                 #print(X_train[i].shape, y_train[i].shape)
                 optimizer.zero_grad()
-                print(X_train[i],y_train[i])
+                #print(X_train[i],y_train[i])
 
                 outputs = model(X_train[i])
-                loss = criterion(outputs,y_train[i])
+                loss = criterion(outputs,torch.squeeze(y_train[i]).type(torch.LongTensor))
                 loss.backward()
                 optimizer.step()
-                print(outputs[20],X_token[i][20])
-                break
-
-
-
-
-
-
-
-
+                _, predicted = torch.max(outputs.data, 1)
+                r_no = random.randint(0,batchsize-1)
+                print(outputs[r_no],predicted[r_no],X_token[i][r_no])
+                #print(loss.item())
 
 
 

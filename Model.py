@@ -12,7 +12,9 @@ class MLPNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(512, output_dim),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, output_dim),
         )
 
     def forward(self, x):
