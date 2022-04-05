@@ -3,6 +3,7 @@ import numpy as np
 from nltk.corpus.reader import WordListCorpusReader
 from nltk.corpus import stopwords
 import numpy as np
+import os, logging, datetime
 
 alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
@@ -106,3 +107,32 @@ def insert_errors(data_arr):
 # Find letter index from all_letters, e.g. "a" = 0
 def letterToIndex(letter):
     return all_letters.find(letter)
+
+def check_dir(path):
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def get_logger(logdir, name, evaluate=False):
+    # Set logger for saving process experimental information
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+    ts = str(datetime.datetime.now()).split(".")[0].replace(" ", "_")
+    ts = ts.replace(":", "_").replace("-", "_")
+    logger.ts = ts
+    if evaluate:
+        file_path = os.path.join(logdir, "evaluate_{}.log".format(ts))
+    else:
+        file_path = os.path.join(logdir, "run_{}.log".format(ts))
+    file_hdlr = logging.FileHandler(file_path)
+    file_hdlr.setFormatter(formatter)
+
+    # strm_hdlr = logging.StreamHandler(sys.stdout)
+    strm_hdlr = logging.StreamHandler()
+    strm_hdlr.setFormatter(formatter)
+
+    logger.addHandler(file_hdlr)
+    logger.addHandler(strm_hdlr)
+
+    return logger
