@@ -13,7 +13,7 @@ from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01 ,check_dir, int2char, get_logger
 import wandb
-
+from sklearn.metrics import f1_score
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -210,6 +210,9 @@ def initialize_model(n_hidden_layers):
 
 def metric_calc():
     ### TODO : Implement. Refer https://stackoverflow.com/questions/56643503/efficient-metrics-evaluation-in-pytorch
+    # f1 score for class 0
+
+
     return
 
 
@@ -229,10 +232,11 @@ def train_model(train_loader, model, criterion, optim):
 
     return
 
-def val_model(val_loader,model,criterion,logger,epoch=0):
+def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # TODO: Improve this validation section
     correct = 0
     total = 0
+    f1 = 0
 
     for i, data in enumerate(val_loader):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
@@ -251,7 +255,7 @@ def val_model(val_loader,model,criterion,logger,epoch=0):
         # Total correct predictions
         correct += (predicted == Y_vec).sum()
 
-        #f1score, precision, recall = metric_calc()
+        f1 = f1_score(predicted ,Y_vec)
         # check for an index
         # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
@@ -259,9 +263,10 @@ def val_model(val_loader,model,criterion,logger,epoch=0):
 
     accuracy = 100 * correct / total
 
-    print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy}")
+    print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     wandb.log({"val_loss": loss.item()})
     wandb.log({"val_accuracy":accuracy})
+    wandb.log({"f1_score":f1})
 
     return loss.item(), accuracy
 
