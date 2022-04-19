@@ -7,11 +7,13 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from Model import MLPNetwork, RNN
-import torch.optim as optim
+from Model import MLPNetwork, RNN , LSTMModel
 import sys, random
+from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01 ,check_dir, int2char, get_logger
+import wandb
+
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -23,56 +25,27 @@ alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/
 
 num_epochs = 5
 
-class LSTMModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, layer_dim, output_dim):
-        super(LSTMModel, self).__init__()
-        self.hidden_dim = hidden_dim
-
-        # Number of hidden layers
-        self.layer_dim = layer_dim
-
-        # batch_first=True causes input/output tensors to be of shape
-        # (batch_dim, seq_dim, feature_dim)
-        self.lstm = nn.LSTM(input_dim, hidden_dim, layer_dim, batch_first=True)
-        self.fc = nn.Linear(hidden_dim, output_dim)
-
-    def forward(self, x):
-        # Initialize hidden state with zeros
-        h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_()
-
-        # Initialize cell state
-        c0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_()
-
-        # 28 time steps
-        # We need to detach as we are doing truncated backpropagation through time (BPTT)
-        # If we don't, we'll backprop all the way to the start even after going through another batch
-        out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
-
-        # Index hidden state of last time step
-        # out.size() --> 100, 28, 100
-        # out[:, -1, :] --> 100, 100 --> just want last time step hidden states!
-        out = self.fc(out[:, -1, :])
-        # out.size() --> 100, 10
-        return out
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--bs', type=int, default=32, help='batch_size')
+    parser.add_argument('--bs', type=int, default=200, help='batch_size')
+    parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
-    hparam_keys = ["lr", "bs", "size"]  # changed from loss to size
+    hparam_keys = ["lr", "bs","optim"]  # changed from loss to size
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'dt_binseg', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_noncontext', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
+
+    return args
 
 
 def insert_errors(data):
@@ -205,7 +178,7 @@ def convert_to_pytorch_dataset(data):
     # labels = torch.Tensor(labels)
 
     my_dataset = MyDataset(words, labels)
-    my_dataloader = DataLoader(my_dataset, batch_size=200, shuffle=True)
+    my_dataloader = DataLoader(my_dataset, batch_size=args.bs, shuffle=True)
 
     val_dataset = MyDataset(words, labels)
     val_dataloader = DataLoader(val_dataset, batch_size=500, shuffle=False)
@@ -227,7 +200,7 @@ def initialize_model(n_hidden_layers):
 
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim)
 
-    learning_rate = 0.01
+    learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
     #criterion = nn.BCEWithLogitsLoss()
@@ -241,18 +214,18 @@ def metric_calc():
 
 
 def train_model(train_loader, model, criterion, optim):
-    iter = 0
-    n_epoch = 30
-    for epoch in range(n_epoch):
-        for i, data in enumerate(train_loader):
-            X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-            X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
-            optim.zero_grad()
-            outputs = model(X_vec)  # (n_words, 2)#
-            loss = criterion(outputs, Y_vec)
-            loss.backward()
-            optim.step()
+
+    for i, data in enumerate(tqdm(train_loader)):
+        X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
+        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+        optim.zero_grad()
+        outputs = model(X_vec)  # (n_words, 2)#
+        loss = criterion(outputs, Y_vec)
+        wandb.log({"train_loss":loss})
+        wandb.watch(model)
+        loss.backward()
+        optim.step()
 
     return
 
@@ -278,7 +251,7 @@ def val_model(val_loader,model,criterion,logger,epoch=0):
         # Total correct predictions
         correct += (predicted == Y_vec).sum()
 
-        f1score, precision, recall = metric_calc()
+        #f1score, precision, recall = metric_calc()
         # check for an index
         # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
@@ -287,22 +260,39 @@ def val_model(val_loader,model,criterion,logger,epoch=0):
     accuracy = 100 * correct / total
 
     print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy}")
+    wandb.log({"val_loss": loss.item()})
+    wandb.log({"val_accuracy":accuracy})
 
     return loss.item(), accuracy
 
 
 def main(args):
+    wandb.init(project="my-test-project", entity="georgestanley")
+    wandb.config = {
+        "learning_rate":args.lr,
+        "bs":args.bs,
+        "epochs":30
+    }
     logger = get_logger(args.output_folder, args.exp_name)
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    data = get_wikipedia_words('D:\\Freiburg\\MasterProject\\top_30000_words_over_200000.json')
+    data = get_wikipedia_words(os.path.join(args.data_folder,"top_30000_words_over_200000.json"))
     data = convert_to_numpy(data)
     train_loader, val_loader = convert_to_pytorch_dataset(data)
-    # test_dataloader(dataloader)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
-    train_model(train_loader, model, criterion, optim)
-    val_results = val_model(val_loader,model,criterion,logger)
+
+    expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
+
+    print("Dataset size: {} samples".format(len(train_loader.dataset))) #TODO
+    logger.info(expdata)
+    logger.info('train_data {}'.format(train_loader.dataset.__len__())) # TODO
+    logger.info('val_data {}'.format(val_loader.dataset.__len__())) #TODO
+
+    n_epoch = 30
+    for epoch in range(n_epoch):
+        train_model(train_loader, model, criterion, optim)
+        val_results = val_model(val_loader,model,criterion,logger)
 
     return
     data_arr = insert_errors(data_arr)
