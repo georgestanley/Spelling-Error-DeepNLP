@@ -23,7 +23,6 @@ plot_every = 1000
 batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
 
-num_epochs = 5
 
 
 def parse_arguments():
@@ -216,8 +215,9 @@ def metric_calc():
     return
 
 
-def train_model(train_loader, model, criterion, optim):
+def train_model(train_loader, model, criterion, optim, epoch):
 
+    running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
         X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
@@ -230,7 +230,9 @@ def train_model(train_loader, model, criterion, optim):
         loss.backward()
         optim.step()
 
-    return
+        running_loss += loss.item()
+
+    return running_loss
 
 def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # TODO: Improve this validation section
@@ -268,7 +270,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
     wandb.log({"val_accuracy":accuracy})
     wandb.log({"f1_score":f1})
 
-    return loss.item(), accuracy
+    return loss.item(), accuracy, f1
 
 
 def main(args):
@@ -294,15 +296,41 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__())) # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__())) #TODO
 
-    n_epoch = 30
-    for epoch in range(n_epoch):
-        train_model(train_loader, model, criterion, optim)
-        val_results = val_model(val_loader,model,criterion,logger)
+    n_epoch = 2
 
-    return
-    data_arr = insert_errors(data_arr)
-    np.random.shuffle(data_arr)
-    print(data_arr.shape)
+    train_losses, val_losses , val_accuracies, val_f1s = [0.0],[0.0],[0.0],[0.0]
+    for epoch in range(n_epoch):
+        train_loss = train_model(train_loader, model, criterion, optim, epoch)
+        val_loss, val_acc,val_f1 = val_model(val_loader,model,criterion,logger)
+
+        logger.info(f'Epoch{epoch}')
+        logger.info('Training loss: {}'.format(train_loss))
+        logger.info('Validation loss: {}'.format(val_loss))
+        logger.info('Validation accuracy: {}'.format(val_acc))
+
+        if val_f1 > max(val_f1s) or val_acc > max(val_accuracies):
+            torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best_{}.pth".format(epoch)))
+            logger.info('Model Saved')
+
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        val_accuracies.append(val_acc)
+        val_f1s.append(val_f1)
+
+
+    #create plot
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
+    ax1.plot(np.arange(n_epoch+1), train_losses)
+    ax1.set_title('Train Loss')
+    ax2.plot(np.arange(n_epoch+1), val_losses)
+    ax2.set_title('Val Loss')
+    ax3.plot(np.arange(n_epoch+1),val_accuracies)
+    ax3.set_title('Val Acc')
+    ax4.plot(np.arange(n_epoch+1), val_f1s)
+    ax4.set_title('Val F1')
+
+    plt.savefig(fname=os.path.join(args.model_folder, "plot.png"))
+    plt.show()
 
     return
 

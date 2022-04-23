@@ -99,9 +99,6 @@ def insert_errors(data_arr):
     print("Shape after adding new data", np.shape(data_arr))
     # print(data_arr)
 
-
-
-
     return data_arr
 
 # Find letter index from all_letters, e.g. "a" = 0
