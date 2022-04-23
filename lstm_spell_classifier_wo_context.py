@@ -1,12 +1,8 @@
 import string , argparse, json , os
-from nltk.corpus.reader import WordListCorpusReader
 import numpy as np
-from nltk.corpus import stopwords
-from utils import *
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 from Model import MLPNetwork, RNN , LSTMModel
 import sys, random
 from tqdm import tqdm
@@ -14,6 +10,7 @@ from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01 ,check_dir, int2char, get_logger
 import wandb
 from sklearn.metrics import f1_score
+from datetime import datetime
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -22,7 +19,7 @@ print_every = 1000
 plot_every = 1000
 batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
-
+exp_id= datetime.now().strftime('%Y%m%d%H%M%S')
 
 
 def parse_arguments():
@@ -41,7 +38,7 @@ def parse_arguments():
     args.exp_name += "_{}".format(args.exp_suffix)
 
     args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_noncontext', args.exp_name))
-    args.model_folder = check_dir(os.path.join(args.output_folder, "models"))
+    args.model_folder = check_dir(os.path.join(args.output_folder, "{}_models".format(exp_id)))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
     return args
@@ -207,14 +204,6 @@ def initialize_model(n_hidden_layers):
     return model, criterion, optimizer
 
 
-def metric_calc():
-    ### TODO : Implement. Refer https://stackoverflow.com/questions/56643503/efficient-metrics-evaluation-in-pytorch
-    # f1 score for class 0
-
-
-    return
-
-
 def train_model(train_loader, model, criterion, optim, epoch):
 
     running_loss = 0.0
@@ -296,7 +285,7 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__())) # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__())) #TODO
 
-    n_epoch = 2
+    n_epoch = 30
 
     train_losses, val_losses , val_accuracies, val_f1s = [0.0],[0.0],[0.0],[0.0]
     for epoch in range(n_epoch):
@@ -319,21 +308,38 @@ def main(args):
 
 
     #create plot
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
-    ax1.plot(np.arange(n_epoch+1), train_losses)
-    ax1.set_title('Train Loss')
-    ax2.plot(np.arange(n_epoch+1), val_losses)
-    ax2.set_title('Val Loss')
-    ax3.plot(np.arange(n_epoch+1),val_accuracies)
-    ax3.set_title('Val Acc')
-    ax4.plot(np.arange(n_epoch+1), val_f1s)
-    ax4.set_title('Val F1')
+    #
+    # f, ((ax1), (ax2), (ax3), (ax4)) = plt.subplots(4, 1, sharex='col', sharey='row')
+    # ax1.plot(np.arange(n_epoch+1), train_losses)
+    # ax1.set_title('Train Loss')
+    # ax2.plot(np.arange(n_epoch+1), val_losses)
+    # ax2.set_title('Val Loss')
+    # ax3.plot(np.arange(n_epoch+1),val_accuracies)
+    # ax3.set_title('Val Acc')
+    # ax4.plot(np.arange(n_epoch+1), val_f1s)
+    # ax4.set_title('Val F1')
 
-    plt.savefig(fname=os.path.join(args.model_folder, "plot.png"))
+    plt.plot(np.arange(n_epoch+1), train_losses)
+    plt.title('Train Loss')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_train_loss.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1), val_losses)
+    plt.title('Val Loss')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_loss.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1),val_accuracies)
+    plt.title('Val Acc')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_acc.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1), val_f1s)
+    plt.title('Val F1')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
     plt.show()
 
     return
-
 
 if __name__ == "__main__":
     args = parse_arguments()
