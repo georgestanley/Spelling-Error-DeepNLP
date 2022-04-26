@@ -29,6 +29,7 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=200, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
+    parser.add_argument('--hidden_dim',type=int, default=100,help='LSTM hidden layer Dim')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
@@ -48,10 +49,25 @@ def insert_errors(data):
     temp = []
     for x in data[:, 0]:
         if get_rand01() == 1:
+            #Type 1: Replace a character
             yy = np.array2string(x).replace("'", "")
             rep_char = int2char(np.random.randint(0, 26))
             rep_pos = np.random.randint(low=0, high=len(yy))
             temp.append(yy[0:rep_pos] + rep_char + yy[rep_pos + 1:])
+
+
+        if get_rand01()==1 and len(x) > 1:
+            #Type 2: delete a character
+            yy = np.array2string(x).replace("'", "")
+            # print("old word=",yy)
+            # rep_char = int2char(np.random.randint(0, 26))
+            rep_pos = np.random.randint(low=0, high=len(yy))
+            # yy[rep_pos]=rep_char
+            # print("rep_char=",rep_char,"rep_pos=",rep_pos)
+            temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
+            # print("new word=",yy)
+            # x_temp.append(y)
+
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
@@ -120,6 +136,9 @@ def vectorize_data(data_arr):
     X_vec = X_vec[r]
     Y_vec = Y_vec[r]
 
+    X_token = np.asarray(X_token)
+    X_token = X_token[r]
+
     return X_vec, Y_vec, X_token
 
 
@@ -177,7 +196,7 @@ def convert_to_pytorch_dataset(data):
     my_dataloader = DataLoader(my_dataset, batch_size=args.bs, shuffle=True)
 
     val_dataset = MyDataset(words, labels)
-    val_dataloader = DataLoader(val_dataset, batch_size=500, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False)
 
     return my_dataloader, val_dataloader
 
@@ -190,7 +209,7 @@ def test_dataloader(my_dataloader):
 
 def initialize_model(n_hidden_layers):
     input_dim = 228
-    hidden_dim = 100 # TODO : Iterate over different hidden dim sizes
+    hidden_dim = args.hidden_dim # TODO : Iterate over different hidden dim sizes
     layer_dim = n_hidden_layers
     output_dim = 2
 
@@ -263,13 +282,17 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
 
 def main(args):
+    args.hidden_dim=256
+    os.environ["WANDB_MODE"]="dryrun"
     wandb.init(project="my-test-project", entity="georgestanley")
     wandb.config = {
         "learning_rate":args.lr,
         "bs":args.bs,
-        "epochs":30
+        "epochs":30,
+        "hidden_dim":args.hidden_dim
     }
     logger = get_logger(args.output_folder, args.exp_name)
+    logger.info("Error 1 and 2")
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2

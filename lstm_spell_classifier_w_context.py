@@ -89,7 +89,7 @@ def cleanup_data(data):
 def generate_N_grams(data,ngram=2):
 
     for i,text in data.iterrows():
-        #TODO
+        #TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
         pass
 
     return ans
