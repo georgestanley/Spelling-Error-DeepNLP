@@ -9,7 +9,7 @@ import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01 ,check_dir, int2char, get_logger
-import wandb
+#import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
 from nltk.corpus import stopwords
@@ -69,7 +69,7 @@ def remove_punctuation(text):
     '''
 
     :param text: String
-    :return: ans : String
+    :return: ans: String
     '''
     ans = ""
     for i in text:
@@ -86,24 +86,72 @@ def cleanup_data(data):
     return data
 
 
-def generate_N_grams(data,ngram=2):
+def generate_N_grams(data,ngram=5):
+    '''
+    Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
+    :param data: Pandas dataframe [1 Column]
+    :param ngram: int
+    :return:
+    '''
+
+    new_dataset = []
 
     for i,text in data.iterrows():
         #TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
-        pass
+        text = text.values[0].split()
 
-    return ans
+        for i in range(0, len(text) - ngram + 1):
+            x = []
+            for j in range(5):
+                #print(f"{i},{j},{text[i + j]}")
+                x.append(text[i + j])
+            new_dataset.append([x])
 
+    new_dataset = pd.DataFrame(new_dataset, columns=['text'])
+
+    return new_dataset
+
+
+def convert_to_numpy(data):
+    '''
+    Ignore for now.
+    :param data:
+    :return: data
+    '''
+    return data
+
+class MyDataset(torch.utils.data.Dataset):
+
+    def __init__(self, words, labels):
+        self.words = words
+        self.labels = labels
+
+    def __getitem__(self, i):
+        word = self.words[i]
+        label = int(self.labels[i])
+        return (word, label)
+
+    def __len__(self):
+        return len(self.labels)
+
+def convert_to_pytorch_dataset(data):
+    my_dataset = MyDataset(words, labels)
+    my_dataloader = DataLoader(my_dataset, batch_size=args.bs, shuffle=True)
+
+    val_dataset = MyDataset(words, labels)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False)
+
+    return train_dataloader, val_dataloader
 
 
 def main(args):
     os.environ["WANDB_MODE"]="dryrun"
-    wandb.init(project="my-test-project", entity="georgestanley")
-    wandb.config = {
-        "learning_rate":args.lr,
-        "bs":args.bs,
-        "epochs":30
-    }
+    # wandb.init(project="my-test-project", entity="georgestanley")
+    # wandb.config = {
+    #     "learning_rate":args.lr,
+    #     "bs":args.bs,
+    #     "epochs":30
+    # }
 
     logger = get_logger(args.output_folder, args.exp_name)
     model_type = 'RNN'

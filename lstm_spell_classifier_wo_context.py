@@ -8,7 +8,7 @@ import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01 ,check_dir, int2char, get_logger
-import wandb
+# import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
 
@@ -45,7 +45,13 @@ def parse_arguments():
     return args
 
 
-def insert_errors(data):
+def insert_errors(data):#
+    '''
+
+    :param data: ndarray (batch_size,2)
+    :return: data : ndarray ( ?? ,2)
+    '''
+    print('data shape before ',np.shape(data))
     temp = []
     for x in data[:, 0]:
         if get_rand01() == 1:
@@ -59,18 +65,13 @@ def insert_errors(data):
         if get_rand01()==1 and len(x) > 1:
             #Type 2: delete a character
             yy = np.array2string(x).replace("'", "")
-            # print("old word=",yy)
-            # rep_char = int2char(np.random.randint(0, 26))
             rep_pos = np.random.randint(low=0, high=len(yy))
-            # yy[rep_pos]=rep_char
-            # print("rep_char=",rep_char,"rep_pos=",rep_pos)
             temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
-            # print("new word=",yy)
-            # x_temp.append(y)
 
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
+    print('data shape after ',np.shape(data))
     return data
 
 
@@ -150,6 +151,11 @@ def get_wikipedia_words(file_name):
 
 
 def convert_to_numpy(words):
+    '''
+    takes in a dictionary of words and converts it into and ndarray. Also outputs another ndarray of Zeroes for labels.
+    :param words: dict
+    :return: tuple(x1,x2); x1 ->ndarray , x2 -> ndarray
+    '''
     non_ascii_keys = []
     for x in words.keys():
         if x.isascii() != True:
@@ -233,8 +239,8 @@ def train_model(train_loader, model, criterion, optim, epoch):
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
-        wandb.log({"train_loss":loss})
-        wandb.watch(model)
+        # wandb.log({"train_loss":loss})
+        # wandb.watch(model)
         loss.backward()
         optim.step()
 
@@ -274,9 +280,9 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
     accuracy = 100 * correct / total
 
     print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
-    wandb.log({"val_loss": loss.item()})
-    wandb.log({"val_accuracy":accuracy})
-    wandb.log({"f1_score":f1})
+    # wandb.log({"val_loss": loss.item()})
+    # wandb.log({"val_accuracy":accuracy})
+    # wandb.log({"f1_score":f1})
 
     return loss.item(), accuracy, f1
 
@@ -284,13 +290,13 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 def main(args):
     args.hidden_dim=256
     os.environ["WANDB_MODE"]="dryrun"
-    wandb.init(project="my-test-project", entity="georgestanley")
-    wandb.config = {
-        "learning_rate":args.lr,
-        "bs":args.bs,
-        "epochs":30,
-        "hidden_dim":args.hidden_dim
-    }
+    # wandb.init(project="my-test-project", entity="georgestanley")
+    # wandb.config = {
+    #     "learning_rate":args.lr,
+    #     "bs":args.bs,
+    #     "epochs":30,
+    #     "hidden_dim":args.hidden_dim
+    # }
     logger = get_logger(args.output_folder, args.exp_name)
     logger.info("Error 1 and 2")
     model_type = 'RNN'

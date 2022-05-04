@@ -2,6 +2,7 @@
 #records in training file : 6232723
 #records in development file:10000
 #records in test file:10000
+import gc
 
 from nltk.corpus import stopwords
 from collections import Counter
@@ -24,9 +25,15 @@ def count_words(data, k, max_file_lines):
 
     flat_list = [item for sublist in data for item in sublist]
     print("Flat List generated")
+    del data
+    gc.collect()
+
     stopwords_list = list(stopwords.words('english'))
     c = Counter(flat_list)
+    del flat_list
+    gc.collect()
     print("Counter generated")
+
     for x in stopwords_list:
         try:
             c.pop(x)
@@ -101,7 +108,7 @@ def remove_nonalpha_words(data):
 
 def main ():
     max_file_lines = 200000
-    k = 30000
+    k = 60000
     file_path_dev = "D:\Freiburg\MasterProject\datasets\wikipedia_2021-02-20\\development_documents.jsonl"
     file_path_prod= "D:\Freiburg\MasterProject\datasets\wikipedia_2021-02-20\\training_documents.jsonl"
     wikipedia_entries = get_wikipedia_files(file_path_prod , max_file_lines)
