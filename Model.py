@@ -60,6 +60,7 @@ class LSTMModel(nn.Module):
         self.sig = nn.Sigmoid()
 
     def forward(self, x):
+        # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_()
 
