@@ -92,8 +92,12 @@ def binarize(token, label, alph):
 
 def vectorize_data(data_arr):
     # https://arxiv.org/pdf/1608.02214.pdf
+    '''
 
-    data_arr = np.column_stack((data_arr[0], data_arr[1]))
+    :param data_arr:list(2). [tuple(200),tuple(200)]
+    :return:
+    '''
+    data_arr = np.column_stack((data_arr[0], data_arr[1])) # ndarray (batch_size,2)
     data_arr = insert_errors(data_arr)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), len(alph) * 3))
