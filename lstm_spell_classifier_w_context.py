@@ -198,7 +198,7 @@ def train_model(train_loader, model, criterion, optim, epoch):
     running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        #X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
