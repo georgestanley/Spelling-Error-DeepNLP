@@ -106,9 +106,12 @@ def generate_N_grams(data, ngram=5):
     for n, text in enumerate(data):
         # TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
 
-        r = r'\S*\d+\S*' # https://stackoverflow.com/a/65105960/5959601
+        r = r'\S*\d+\S*' # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
         text = re.sub(r, '',text)
         text = text.split()
+        for x in text:
+            if not x.isalpha():
+                text.remove(x)
 
         for i in range(0, len(text) - ngram + 1):
             x = []
@@ -159,9 +162,9 @@ class MyDataset(torch.utils.data.Dataset):
 
 def collate_fn(batch):
     temp_x , temp_y= [],[]
-    print(batch)
-    print(type(batch))
-    print(len(batch))
+    #print(batch)
+    #print(type(batch))
+    #print(len(batch))
     for x,y in batch:
         temp_x.append(x)
         temp_y.append(y)
@@ -173,7 +176,7 @@ def convert_to_pytorch_dataset(data):
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn)#
 
     val_dataset = MyDataset(data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
@@ -211,6 +214,44 @@ def train_model(train_loader, model, criterion, optim, epoch):
         running_loss += loss.item()
 
     return running_loss
+
+def val_model(val_loader, model, criterion, logger, epoch=0, ):
+    # TODO: Improve this validation section
+    correct = 0
+    total = 0
+    f1 = 0
+
+    for i, data in enumerate(val_loader):
+        X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
+        #X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+
+        outputs = model(X_vec)  # (n_words, 2)
+
+        # Get predictions from the maximum value
+        _, predicted = torch.max(outputs.data, 1)
+
+        # Total number of labels
+        total += Y_vec.size(0)
+
+        loss = criterion(outputs, Y_vec)
+        # Total correct predictions
+        correct += (predicted == Y_vec).sum()
+
+        f1 = f1_score(predicted ,Y_vec)
+        # check for an index
+        # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
+
+        break
+
+    accuracy = 100 * correct / total
+
+    print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    # wandb.log({"val_loss": loss.item()})
+    # wandb.log({"val_accuracy":accuracy})
+    # wandb.log({"f1_score":f1})
+
+    return loss.item(), accuracy, f1
 
 
 def binarize(tokens, alph):
@@ -301,7 +342,7 @@ def insert_errors(data):  #
     :param data: ndarray (batch_size,2)
     :return: data : ndarray ( ?? ,2)
     '''
-    print('data shape before ', np.shape(data))
+    # print('data shape before ', np.shape(data))
     temp = []
     for i, x in enumerate(data[:, 2]):
         if get_rand01() == 1:
@@ -327,7 +368,7 @@ def insert_errors(data):  #
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
-    print('data shape after ', np.shape(data))
+    # print('data shape after ', np.shape(data))
     return data
 
 
@@ -354,7 +395,7 @@ def main(args):
     data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
     data = cleanup_data(data)
     data = generate_N_grams(data)
-    data = convert_to_numpy(data)
+    #data = convert_to_numpy(data)
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
@@ -365,7 +406,7 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
 
-    n_epoch = 30
+    n_epoch = 5
 
     #test_dataloader(train_loader)
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
@@ -389,17 +430,25 @@ def main(args):
         val_f1s.append(val_f1)
 
     # create plot
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
-    ax1.plot(np.arange(n_epoch + 1), train_losses)
-    ax1.set_title('Train Loss')
-    ax2.plot(np.arange(n_epoch + 1), val_losses)
-    ax2.set_title('Val Loss')
-    ax3.plot(np.arange(n_epoch + 1), val_accuracies)
-    ax3.set_title('Val Acc')
-    ax4.plot(np.arange(n_epoch + 1), val_f1s)
-    ax4.set_title('Val F1')
 
-    plt.savefig(fname=os.path.join(args.model_folder, "plot.png"))
+    plt.plot(np.arange(n_epoch+1), train_losses)
+    plt.title('Train Loss')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_train_loss.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1), val_losses)
+    plt.title('Val Loss')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_loss.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1),val_accuracies)
+    plt.title('Val Acc')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_acc.png"))
+    plt.show()
+
+    plt.plot(np.arange(n_epoch+1), val_f1s)
+    plt.title('Val F1')
+    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
     plt.show()
 
     return
