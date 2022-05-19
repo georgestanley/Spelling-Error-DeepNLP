@@ -1,5 +1,5 @@
-import pandas as pd
-import string, argparse, json, os , re
+from datetime import datetime
+import string, argparse, json, os, re
 import numpy as np
 import torch
 from torch import nn
@@ -13,6 +13,9 @@ from utils.utils import get_rand01, check_dir, int2char, get_logger
 from sklearn.metrics import f1_score
 from datetime import datetime
 from nltk.corpus import stopwords
+import time
+from numba import jit
+
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -21,8 +24,24 @@ print_every = 1000
 plot_every = 1000
 batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
+alph_len = len(alph)
 
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
+
+
+def timeit(func):
+    """
+    Decorator for measuring function's running time.
+    """
+
+    def measure_time(*args, **kw):
+        start_time = time.time()
+        result = func(*args, **kw)
+        print("Processing time of %s(): %.2f seconds."
+              % (func.__qualname__, time.time() - start_time))
+        return result
+
+    return measure_time
 
 
 def parse_arguments():
@@ -30,7 +49,7 @@ def parse_arguments():
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--bs', type=int, default=200, help='batch_size')
+    parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
@@ -48,6 +67,7 @@ def parse_arguments():
     return args
 
 
+#@timeit
 def get_wikipedia_text(file_name):
     '''
     Returns a pandas Dataframe containing the extracted texts.
@@ -67,6 +87,7 @@ def get_wikipedia_text(file_name):
     return data
 
 
+#@timeit
 def remove_punctuation(texts):
     '''
 
@@ -74,14 +95,12 @@ def remove_punctuation(texts):
     :return: ans: String
     '''
     ans = ""
-    for n, text in enumerate(texts):
-        for i in text:
-            if i not in string.punctuation:
-                ans += i
-        texts[n] = ans
-    return texts
+    stripPunct = str.maketrans('', '', string.punctuation)
+    new = np.array([i.translate(stripPunct) for i in texts])
+    return new
 
 
+#@timeit
 def cleanup_data(data):
     """
     :param: data :Pandas dataframe [1 column]
@@ -93,6 +112,7 @@ def cleanup_data(data):
     return data
 
 
+#@timeit
 def generate_N_grams(data, ngram=5):
     """
     Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
@@ -103,15 +123,25 @@ def generate_N_grams(data, ngram=5):
 
     new_dataset = []
 
-    for n, text in enumerate(data):
+    for n, text in tqdm(enumerate(data)):
         # TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
 
-        r = r'\S*\d+\S*' # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
-        text = re.sub(r, '',text)
+        r = r'\S*\d+\S*'  # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
+        text = re.sub(r, '', text)
         text = text.split()
-        for x in text:
-            if not x.isalpha():
-                text.remove(x)
+        text[:] = [tup for tup in text if  tup.isalpha()]
+        text[:] = [tup for tup in text if  tup.isascii()]
+
+        # if 'sédar' in text:
+        #     print('Seadr found')
+        # for x in text:
+        #     if not x.isalpha():
+        #         text.remove(x)
+        #
+        # for x in text:
+        #     if not x.isascii():
+        #         print('Removed',x)
+        #         text.remove(x)
 
         for i in range(0, len(text) - ngram + 1):
             x = []
@@ -160,29 +190,33 @@ class MyDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.labels)
 
+
+#@timeit
 def collate_fn(batch):
-    temp_x , temp_y= [],[]
-    #print(batch)
-    #print(type(batch))
-    #print(len(batch))
-    for x,y in batch:
+    temp_x, temp_y = [], []
+    # print(batch)
+    # print(type(batch))
+    # print(len(batch))
+    for x, y in batch:
         temp_x.append(x)
         temp_y.append(y)
 
-    return temp_x,temp_y
+    return temp_x, temp_y
 
+
+#@timeit
 def convert_to_pytorch_dataset(data):
     train_dataset = MyDataset(data)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn)#
+    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn)
 
     val_dataset = MyDataset(data)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
-
+#@timeit
 def initialize_model(n_hidden_layers=1):
-    input_dim = 228
+    input_dim = alph_len*3
     hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = n_hidden_layers
     output_dim = 2
@@ -196,12 +230,12 @@ def initialize_model(n_hidden_layers=1):
 
     return model, criterion, optimizer
 
-
+#@timeit
 def train_model(train_loader, model, criterion, optim, epoch):
     running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-        #X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
+        # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
@@ -215,6 +249,7 @@ def train_model(train_loader, model, criterion, optim, epoch):
 
     return running_loss
 
+#@timeit
 def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # TODO: Improve this validation section
     correct = 0
@@ -223,7 +258,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
     for i, data in enumerate(val_loader):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-        #X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
 
         outputs = model(X_vec)  # (n_words, 2)
@@ -238,7 +273,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
         # Total correct predictions
         correct += (predicted == Y_vec).sum()
 
-        f1 = f1_score(predicted ,Y_vec)
+        f1 = f1_score(predicted, Y_vec)
         # check for an index
         # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
@@ -246,7 +281,8 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
     accuracy = 100 * correct / total
 
-    print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    print(
+        f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     # wandb.log({"val_loss": loss.item()})
     # wandb.log({"val_accuracy":accuracy})
     # wandb.log({"f1_score":f1})
@@ -255,7 +291,6 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
 
 def binarize(tokens, alph):
-
     words = tokens[:-1]
     label = tokens[-1]
 
@@ -277,7 +312,6 @@ def binarize(tokens, alph):
 
     return torch.tensor(bin), torch.tensor(int(float(label))), words
 
-
 def vectorize_data(data_arr):
     # https://arxiv.org/pdf/1608.02214.pdf
     '''
@@ -285,9 +319,9 @@ def vectorize_data(data_arr):
     :return:
     '''
     data_arr = np.column_stack((data_arr[0], data_arr[1]))
-    data_arr = insert_errors(data_arr)
+    data_arr = insert_errors(data_arr) # (batch_size *6)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
-    X_vec = torch.zeros((len(data_arr),5, len(alph) * 3)) # (batch_len * 5 * 228 )
+    X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
     Y_vec = torch.zeros((len(data_arr), 1))
     X_token = []
     # TODO:
@@ -304,27 +338,11 @@ def vectorize_data(data_arr):
         for j, token in enumerate(mini_batch_tokens):
             x, y, z = binarize(token, alph)
             x_mini_batch, y_mini_batch, x_token = x, y, z
-            '''
-            if jumble_type == 'NO':
-                x_mini_batch[j], x_token = binarize.noise_char(token, noise_type, alph)
-            else:
-                x_mini_batch[j], x_token = binarize.jumble_char(token, jumble_type, alph)
-            '''
-
-            # bin_label = [0] * len(vocab)
-            # bin_label[vocab[token]] = 1
-            # y_mini_batch[j] = np.array(bin_label)
             X_token_m.append(x_token)
         X_vec[m] = x_mini_batch
         Y_vec[m] = y_mini_batch
         X_token.append(X_token_m)
-
-        percentage = int(m * 100. / (len(data_arr) / batchsize))
-        # sys.stdout.write("\r%d %% %s" % (percentage, 'train data'))
-        # print(str(percentage) + '%'),
         sys.stdout.flush()
-
-    # print(X_vec.shape,Y_vec.shape)
 
     r = torch.randperm(X_vec.size()[0])
     X_vec = X_vec[r]
@@ -336,6 +354,61 @@ def vectorize_data(data_arr):
     return X_vec, Y_vec, X_token
 
 
+def binarize2(tokens, isLabelVector=False):
+
+    bin = []
+
+    if isLabelVector:
+        return torch.tensor(int(float(tokens)))
+    bin_beg = [0] * len(alph)
+    bin_middle = [0] * len(alph)
+    bin_end = [0] * len(alph)
+
+    bin_beg[alph.index(tokens[0])] += 1
+    bin_end[alph.index(tokens[-1])] += 1
+
+    for i in range(1, len(tokens) - 1):
+        bin_middle[alph.index(tokens[i])] += 1
+
+    bin_all = bin_beg + bin_middle + bin_end
+    bin.append(bin_all)
+    return torch.tensor(bin)
+
+def vectorize_data2(data_arr):
+    data_arr = np.column_stack((data_arr[0], data_arr[1]))
+    data_arr = insert_errors(data_arr)
+    # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
+    X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
+    Y_vec = torch.zeros((len(data_arr), 1))
+    X_token = data_arr[:,:4]
+
+    func3 = np.frompyfunc(binarize2, 2, 1)
+    a= data_arr[:,:4]
+    b = data_arr[:,-1]
+    X = func3(a,False )
+    Y = func3(b,True)
+
+    for i,x in enumerate(X):
+        for j, y in enumerate(x):
+            X_vec[i][j] = y
+
+    for i,y in enumerate(Y):
+            Y_vec[i] = y
+
+    # X_vec = torch.from_numpy(X_vec)
+    # Y_vec = torch.from_numpy(Y)
+
+    r = torch.randperm(X_vec.size()[0])
+    X_vec = X_vec[r]
+    Y_vec = Y_vec[r]
+
+    # X_token = np.asarray(X_token)
+    X_token = X_token[r]
+
+    return X_vec, Y_vec, X_token
+
+
+#@timeit
 def insert_errors(data):  #
     '''
 
@@ -350,17 +423,17 @@ def insert_errors(data):  #
             yy = np.array2string(x).replace("'", "")
             rep_char = int2char(np.random.randint(0, 26))
             rep_pos = np.random.randint(low=0, high=len(yy))
-            #false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+            # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
             false_str = data[i][:-1]
             false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
             temp.append(false_str)
-            #[i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+            # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
 
         if get_rand01() == 1 and len(x) > 1:
             # Type 2: delete a character
             yy = np.array2string(x).replace("'", "")
             rep_pos = np.random.randint(low=0, high=len(yy))
-            #temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
+            # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
             false_str = data[i][:-1]
             false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
             temp.append(false_str)
@@ -379,8 +452,10 @@ def test_dataloader(my_dataloader):
         return
 
 
+
+
 def main(args):
-    os.environ["WANDB_MODE"] = "dryrun"
+    # os.environ["WANDB_MODE"] = "dryrun"
     # wandb.init(project="my-test-project", entity="georgestanley")
     # wandb.config = {
     #     "learning_rate":args.lr,
@@ -392,10 +467,11 @@ def main(args):
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
-    data = cleanup_data(data)
-    data = generate_N_grams(data)
+    #data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
+    #data = cleanup_data(data)
+    #data = generate_N_grams(data)
     #data = convert_to_numpy(data)
+    data = (np.load('data\\5_gram_dataset.npy'), np.load('data\\5_gram_dataset_labels.npy'))
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
@@ -406,9 +482,9 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
 
-    n_epoch = 5
+    n_epoch = 1
 
-    #test_dataloader(train_loader)
+    # test_dataloader(train_loader)
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
@@ -431,22 +507,22 @@ def main(args):
 
     # create plot
 
-    plt.plot(np.arange(n_epoch+1), train_losses)
+    plt.plot(np.arange(n_epoch + 1), train_losses)
     plt.title('Train Loss')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_train_loss.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1), val_losses)
+    plt.plot(np.arange(n_epoch + 1), val_losses)
     plt.title('Val Loss')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_loss.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1),val_accuracies)
+    plt.plot(np.arange(n_epoch + 1), val_accuracies)
     plt.title('Val Acc')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_acc.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1), val_f1s)
+    plt.plot(np.arange(n_epoch + 1), val_f1s)
     plt.title('Val F1')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
     plt.show()
@@ -455,9 +531,12 @@ def main(args):
 
 
 if __name__ == "__main__":
+    start = datetime.now()
     args = parse_arguments()
     device = torch.device("cpu")
     print("LSTM Spelling Classifier")
     print(vars(args))
     print()
     main(args)
+    print(datetime.now()-start)
+
