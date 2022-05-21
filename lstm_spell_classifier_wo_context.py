@@ -1,13 +1,13 @@
-import string , argparse, json , os
+import string, argparse, json, os
 import numpy as np
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from Model import MLPNetwork, RNN , LSTMModel
+from Model import MLPNetwork, RNN, LSTMModel
 import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01 ,check_dir, int2char, get_logger
+from utils.utils import get_rand01, check_dir, int2char, get_logger
 # import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
@@ -19,7 +19,7 @@ print_every = 1000
 plot_every = 1000
 batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
-exp_id= datetime.now().strftime('%Y%m%d%H%M%S')
+exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
 
 def parse_arguments():
@@ -29,11 +29,11 @@ def parse_arguments():
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=200, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
-    parser.add_argument('--hidden_dim',type=int, default=100,help='LSTM hidden layer Dim')
+    parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
-    hparam_keys = ["lr", "bs","optim"]  # changed from loss to size
+    hparam_keys = ["lr", "bs", "optim"]  # changed from loss to size
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -45,25 +45,24 @@ def parse_arguments():
     return args
 
 
-def insert_errors(data):#
+def insert_errors(data):  #
     '''
 
     :param data: ndarray (batch_size,2)
     :return: data : ndarray ( ?? ,2)
     '''
-    print('data shape before ',np.shape(data))
+    # print('data shape before ',np.shape(data))
     temp = []
     for x in data[:, 0]:
         if get_rand01() == 1:
-            #Type 1: Replace a character
+            # Type 1: Replace a character
             yy = np.array2string(x).replace("'", "")
             rep_char = int2char(np.random.randint(0, 26))
             rep_pos = np.random.randint(low=0, high=len(yy))
             temp.append(yy[0:rep_pos] + rep_char + yy[rep_pos + 1:])
 
-
-        if get_rand01()==1 and len(x) > 1:
-            #Type 2: delete a character
+        if get_rand01() == 1 and len(x) > 1:
+            # Type 2: delete a character
             yy = np.array2string(x).replace("'", "")
             rep_pos = np.random.randint(low=0, high=len(yy))
             temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
@@ -71,7 +70,7 @@ def insert_errors(data):#
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
-    print('data shape after ',np.shape(data))
+    # print('data shape after ',np.shape(data))
     return data
 
 
@@ -97,7 +96,7 @@ def vectorize_data(data_arr):
     :param data_arr:list(2). [tuple(200),tuple(200)]
     :return:
     '''
-    data_arr = np.column_stack((data_arr[0], data_arr[1])) # ndarray (batch_size,2)
+    data_arr = np.column_stack((data_arr[0], data_arr[1]))  # ndarray (batch_size,2)
     data_arr = insert_errors(data_arr)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), len(alph) * 3))
@@ -219,27 +218,27 @@ def test_dataloader(my_dataloader):
 
 def initialize_model(n_hidden_layers):
     input_dim = 228
-    hidden_dim = args.hidden_dim # TODO : Iterate over different hidden dim sizes
+    hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = n_hidden_layers
     output_dim = 2
 
-    model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim)
+    model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
+    model.to(device)
 
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    #criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCEWithLogitsLoss()
 
     return model, criterion, optimizer
 
 
 def train_model(train_loader, model, criterion, optim, epoch):
-
     running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
@@ -252,6 +251,7 @@ def train_model(train_loader, model, criterion, optim, epoch):
 
     return running_loss
 
+
 def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # TODO: Improve this validation section
     correct = 0
@@ -260,8 +260,8 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
     for i, data in enumerate(val_loader):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
-        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+        X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
         outputs = model(X_vec)  # (n_words, 2)
 
@@ -275,7 +275,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
         # Total correct predictions
         correct += (predicted == Y_vec).sum()
 
-        f1 = f1_score(predicted ,Y_vec)
+        f1 = f1_score(predicted.cpu(), Y_vec.cpu())
         # check for an index
         # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
@@ -283,17 +283,18 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
     accuracy = 100 * correct / total
 
-    print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    print(
+        f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     # wandb.log({"val_loss": loss.item()})
     # wandb.log({"val_accuracy":accuracy})
     # wandb.log({"f1_score":f1})
 
-    return loss.item(), accuracy, f1
+    return loss.item(), accuracy.item(), f1
 
 
 def main(args):
-    args.hidden_dim=256
-    os.environ["WANDB_MODE"]="dryrun"
+    args.hidden_dim = 256
+    os.environ["WANDB_MODE"] = "dryrun"
     # wandb.init(project="my-test-project", entity="georgestanley")
     # wandb.config = {
     #     "learning_rate":args.lr,
@@ -306,24 +307,24 @@ def main(args):
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    data = get_wikipedia_words(os.path.join(args.data_folder,"top_30000_words_over_200000.json"))
+    data = get_wikipedia_words(os.path.join(args.data_folder, "top_30000_words_over_200000.json"))
     data = convert_to_numpy(data)
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
-    print("Dataset size: {} samples".format(len(train_loader.dataset))) #TODO
+    print("Dataset size: {} samples".format(len(train_loader.dataset)))  # TODO
     logger.info(expdata)
-    logger.info('train_data {}'.format(train_loader.dataset.__len__())) # TODO
-    logger.info('val_data {}'.format(val_loader.dataset.__len__())) #TODO
+    logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
+    logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
 
     n_epoch = 30
 
-    train_losses, val_losses , val_accuracies, val_f1s = [0.0],[0.0],[0.0],[0.0]
+    train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
         train_loss = train_model(train_loader, model, criterion, optim, epoch)
-        val_loss, val_acc,val_f1 = val_model(val_loader,model,criterion,logger)
+        val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger)
 
         logger.info(f'Epoch{epoch}')
         logger.info('Training loss: {}'.format(train_loss))
@@ -339,8 +340,7 @@ def main(args):
         val_accuracies.append(val_acc)
         val_f1s.append(val_f1)
 
-
-    #create plot
+    # create plot
     #
     # f, ((ax1), (ax2), (ax3), (ax4)) = plt.subplots(4, 1, sharex='col', sharey='row')
     # ax1.plot(np.arange(n_epoch+1), train_losses)
@@ -352,31 +352,32 @@ def main(args):
     # ax4.plot(np.arange(n_epoch+1), val_f1s)
     # ax4.set_title('Val F1')
 
-    plt.plot(np.arange(n_epoch+1), train_losses)
+    plt.plot(np.arange(n_epoch + 1), train_losses)
     plt.title('Train Loss')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_train_loss.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1), val_losses)
+    plt.plot(np.arange(n_epoch + 1), val_losses)
     plt.title('Val Loss')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_loss.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1),val_accuracies)
+    plt.plot(np.arange(n_epoch + 1), val_accuracies)
     plt.title('Val Acc')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_acc.png"))
     plt.show()
 
-    plt.plot(np.arange(n_epoch+1), val_f1s)
+    plt.plot(np.arange(n_epoch + 1), val_f1s)
     plt.title('Val F1')
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
     plt.show()
 
     return
 
+
 if __name__ == "__main__":
     args = parse_arguments()
-    device = torch.device("cpu")
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print("LSTM Spelling Classifier")
     print(vars(args))
     print()

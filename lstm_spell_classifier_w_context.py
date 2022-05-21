@@ -1,20 +1,18 @@
-from datetime import datetime
 import string, argparse, json, os, re
 import numpy as np
 import torch
 from torch import nn
 import matplotlib.pyplot as plt
-from Model import MLPNetwork, RNN, LSTMModel
-import sys, random
+from Model import LSTMModel
+import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger
 # import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
-from nltk.corpus import stopwords
+
 import time
-from numba import jit
 
 
 all_letters = string.ascii_letters + " .,;'"
@@ -221,7 +219,8 @@ def initialize_model(n_hidden_layers=1):
     layer_dim = n_hidden_layers
     output_dim = 2
 
-    model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim)
+    model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
+    model.to(device)
 
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -235,8 +234,9 @@ def train_model(train_loader, model, criterion, optim, epoch):
     running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
+        X_vec = X_vec.to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
@@ -258,8 +258,9 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
 
     for i, data in enumerate(val_loader):
         X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
+        X_vec = X_vec.to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
         outputs = model(X_vec)  # (n_words, 2)
 
@@ -273,7 +274,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
         # Total correct predictions
         correct += (predicted == Y_vec).sum()
 
-        f1 = f1_score(predicted, Y_vec)
+        f1 = f1_score(predicted.cpu(), Y_vec.cpu())
         # check for an index
         # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
@@ -287,7 +288,7 @@ def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # wandb.log({"val_accuracy":accuracy})
     # wandb.log({"f1_score":f1})
 
-    return loss.item(), accuracy, f1
+    return loss.item(), accuracy.item(), f1
 
 
 def binarize(tokens, alph):
@@ -467,11 +468,11 @@ def main(args):
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    #data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
-    #data = cleanup_data(data)
-    #data = generate_N_grams(data)
-    #data = convert_to_numpy(data)
-    data = (np.load('data\\5_gram_dataset.npy'), np.load('data\\5_gram_dataset_labels.npy'))
+    data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
+    data = cleanup_data(data)
+    data = generate_N_grams(data)
+    data = convert_to_numpy(data)
+    #data = (np.load('data\\5_gram_dataset.npy'), np.load('data\\5_gram_dataset_labels.npy'))
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
@@ -533,7 +534,7 @@ def main(args):
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
-    device = torch.device("cpu")
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print("LSTM Spelling Classifier")
     print(vars(args))
     print()
