@@ -484,7 +484,7 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
 
-    n_epoch = 1
+    n_epoch = args.epochs
 
     # test_dataloader(train_loader)
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
