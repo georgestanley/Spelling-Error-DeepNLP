@@ -45,7 +45,8 @@ def timeit(func):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
-    parser.add_argument('--output-root', type=str, default='results')
+    parser.add_argument('--output_root', type=str, default='results')
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
@@ -535,6 +536,7 @@ if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print(f"running on {device}")
     print("LSTM Spelling Classifier")
     print(vars(args))
     print()
