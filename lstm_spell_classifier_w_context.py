@@ -474,7 +474,7 @@ def main(args):
     #data = cleanup_data(data)
     #data = generate_N_grams(data)
     #data = convert_to_numpy(data)
-    dataz = np.load('data\\5_gram_dataset.npz')
+    #dataz = np.load('data\\5_gram_dataset.npz')
     dataz = np.load(os.path.join(args.data_folder,args.input_file))
     data = (dataz['arr_0'],dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(data)
