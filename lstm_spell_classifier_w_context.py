@@ -46,6 +46,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
+    parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
@@ -469,11 +470,13 @@ def main(args):
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    data = get_wikipedia_text(os.path.join(args.data_folder, "dev_10.jsonl"))
-    data = cleanup_data(data)
-    data = generate_N_grams(data)
-    data = convert_to_numpy(data)
-    #data = (np.load('data\\5_gram_dataset.npy'), np.load('data\\5_gram_dataset_labels.npy'))
+    #data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    #data = cleanup_data(data)
+    #data = generate_N_grams(data)
+    #data = convert_to_numpy(data)
+    dataz = np.load('data\\5_gram_dataset.npz')
+    dataz = np.load(os.path.join(args.data_folder,args.input_file))
+    data = (dataz['arr_0'],dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
