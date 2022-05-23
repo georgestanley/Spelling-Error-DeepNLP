@@ -1,9 +1,9 @@
 import string
-import numpy as np
 from nltk.corpus.reader import WordListCorpusReader
 from nltk.corpus import stopwords
 import numpy as np
 import os, logging, datetime
+import time
 
 alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
@@ -133,3 +133,17 @@ def get_logger(logdir, name, evaluate=False):
     logger.addHandler(strm_hdlr)
 
     return logger
+
+def timeit(func):
+    """
+    Decorator for measuring function's running time.
+    """
+
+    def measure_time(*args, **kw):
+        start_time = time.time()
+        result = func(*args, **kw)
+        print("Processing time of %s(): %.2f seconds."
+              % (func.__qualname__, time.time() - start_time))
+        return result
+
+    return measure_time

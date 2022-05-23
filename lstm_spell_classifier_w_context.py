@@ -12,9 +12,6 @@ from utils.utils import get_rand01, check_dir, int2char, get_logger
 from sklearn.metrics import f1_score
 from datetime import datetime
 
-import time
-
-
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
 n_iters = 100000
@@ -25,21 +22,6 @@ alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/
 alph_len = len(alph)
 
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
-
-
-def timeit(func):
-    """
-    Decorator for measuring function's running time.
-    """
-
-    def measure_time(*args, **kw):
-        start_time = time.time()
-        result = func(*args, **kw)
-        print("Processing time of %s(): %.2f seconds."
-              % (func.__qualname__, time.time() - start_time))
-        return result
-
-    return measure_time
 
 
 def parse_arguments():
@@ -67,7 +49,6 @@ def parse_arguments():
     return args
 
 
-#@timeit
 def get_wikipedia_text(file_name):
     '''
     Returns a pandas Dataframe containing the extracted texts.
@@ -87,7 +68,7 @@ def get_wikipedia_text(file_name):
     return data
 
 
-#@timeit
+# @timeit
 def remove_punctuation(texts):
     '''
 
@@ -100,7 +81,7 @@ def remove_punctuation(texts):
     return new
 
 
-#@timeit
+# @timeit
 def cleanup_data(data):
     """
     :param: data :Pandas dataframe [1 column]
@@ -112,13 +93,18 @@ def cleanup_data(data):
     return data
 
 
-#@timeit
+# @timeit
 def generate_N_grams(data, ngram=5):
     """
     Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
     :param data: Pandas dataframe [1 Column]
     :param ngram: int
     :return: new_dataset: Pandas dataframe
+
+    # label meanings:
+    # 0: no error in middle word
+    # 1: With error in middle word
+
     """
 
     new_dataset = []
@@ -129,47 +115,18 @@ def generate_N_grams(data, ngram=5):
         r = r'\S*\d+\S*'  # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
         text = re.sub(r, '', text)
         text = text.split()
-        text[:] = [tup for tup in text if  tup.isalpha()]
-        text[:] = [tup for tup in text if  tup.isascii()]
-
-        # if 'sédar' in text:
-        #     print('Seadr found')
-        # for x in text:
-        #     if not x.isalpha():
-        #         text.remove(x)
-        #
-        # for x in text:
-        #     if not x.isascii():
-        #         print('Removed',x)
-        #         text.remove(x)
+        text[:] = [tup for tup in text if tup.isalpha()]
+        text[:] = [tup for tup in text if tup.isascii()]
 
         for i in range(0, len(text) - ngram + 1):
             x = []
             for j in range(5):
-                # print(f"{i},{j},{text[i + j]}")
                 x.append(text[i + j])
             new_dataset.append([x])
 
-    # new_dataset = pd.DataFrame(new_dataset, columns=['inputs'])
-    # new_dataset['labels'] = 0
-
     new_dataset = np.array(new_dataset)
     labels = np.zeros(len(new_dataset))
-
-    # label meanings:
-    # 0: no error in middle word
-    # 1: With error in middle word
-
     return new_dataset, labels
-
-
-def convert_to_numpy(data):
-    '''
-    Ignore for now.
-    :param data:
-    :return: data
-    '''
-    return data
 
 
 class MyDataset(torch.utils.data.Dataset):
@@ -177,9 +134,6 @@ class MyDataset(torch.utils.data.Dataset):
     def __init__(self, data):
         self.words = data[0]
         self.labels = data[1]
-
-        # self.words = words
-        # self.labels = labels
 
     def __getitem__(self, i):
         # x = self.words
@@ -191,7 +145,7 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-#@timeit
+# @timeit
 def collate_fn(batch):
     temp_x, temp_y = [], []
     # print(batch)
@@ -204,19 +158,21 @@ def collate_fn(batch):
     return temp_x, temp_y
 
 
-#@timeit
+# @timeit
 def convert_to_pytorch_dataset(data):
     train_dataset = MyDataset(data)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn, num_workers=4, pin_memory = True
+)
 
     val_dataset = MyDataset(data)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
-#@timeit
+
+# @timeit
 def initialize_model(n_hidden_layers=1):
-    input_dim = alph_len*3
+    input_dim = alph_len * 3
     hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = n_hidden_layers
     output_dim = 2
@@ -231,7 +187,8 @@ def initialize_model(n_hidden_layers=1):
 
     return model, criterion, optimizer
 
-#@timeit
+
+# @timeit
 def train_model(train_loader, model, criterion, optim, epoch):
     running_loss = 0.0
     for i, data in enumerate(tqdm(train_loader)):
@@ -251,7 +208,8 @@ def train_model(train_loader, model, criterion, optim, epoch):
 
     return running_loss
 
-#@timeit
+
+# @timeit
 def val_model(val_loader, model, criterion, logger, epoch=0, ):
     # TODO: Improve this validation section
     correct = 0
@@ -315,6 +273,7 @@ def binarize(tokens, alph):
 
     return torch.tensor(bin), torch.tensor(int(float(label))), words
 
+
 def vectorize_data(data_arr):
     # https://arxiv.org/pdf/1608.02214.pdf
     '''
@@ -322,7 +281,7 @@ def vectorize_data(data_arr):
     :return:
     '''
     data_arr = np.column_stack((data_arr[0], data_arr[1]))
-    data_arr = insert_errors(data_arr) # (batch_size *6)
+    data_arr = insert_errors(data_arr)  # (batch_size *6)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
     Y_vec = torch.zeros((len(data_arr), 1))
@@ -358,7 +317,6 @@ def vectorize_data(data_arr):
 
 
 def binarize2(tokens, isLabelVector=False):
-
     bin = []
 
     if isLabelVector:
@@ -377,26 +335,27 @@ def binarize2(tokens, isLabelVector=False):
     bin.append(bin_all)
     return torch.tensor(bin)
 
+
 def vectorize_data2(data_arr):
     data_arr = np.column_stack((data_arr[0], data_arr[1]))
     data_arr = insert_errors(data_arr)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
     Y_vec = torch.zeros((len(data_arr), 1))
-    X_token = data_arr[:,:4]
+    X_token = data_arr[:, :4]
 
     func3 = np.frompyfunc(binarize2, 2, 1)
-    a= data_arr[:,:4]
-    b = data_arr[:,-1]
-    X = func3(a,False )
-    Y = func3(b,True)
+    a = data_arr[:, :4]
+    b = data_arr[:, -1]
+    X = func3(a, False)
+    Y = func3(b, True)
 
-    for i,x in enumerate(X):
+    for i, x in enumerate(X):
         for j, y in enumerate(x):
             X_vec[i][j] = y
 
-    for i,y in enumerate(Y):
-            Y_vec[i] = y
+    for i, y in enumerate(Y):
+        Y_vec[i] = y
 
     # X_vec = torch.from_numpy(X_vec)
     # Y_vec = torch.from_numpy(Y)
@@ -411,7 +370,7 @@ def vectorize_data2(data_arr):
     return X_vec, Y_vec, X_token
 
 
-#@timeit
+# @timeit
 def insert_errors(data):  #
     '''
 
@@ -455,8 +414,6 @@ def test_dataloader(my_dataloader):
         return
 
 
-
-
 def main(args):
     # os.environ["WANDB_MODE"] = "dryrun"
     # wandb.init(project="my-test-project", entity="georgestanley")
@@ -466,17 +423,32 @@ def main(args):
     #     "epochs":30
     # }
 
+
+
+    return
+
+
+if __name__ == "__main__":
+    start = datetime.now()
+    args = parse_arguments()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print(f"running on {device}")
+    print("LSTM Spelling Classifier with Context")
+    print(vars(args))
+    print()
+    #main(args)
+
     logger = get_logger(args.output_folder, args.exp_name)
     model_type = 'RNN'
     n_letters = len(all_letters)
     n_classes = 2
-    #data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
-    #data = cleanup_data(data)
-    #data = generate_N_grams(data)
-    #data = convert_to_numpy(data)
-    #dataz = np.load('data\\5_gram_dataset.npz')
-    dataz = np.load(os.path.join(args.data_folder,args.input_file))
-    data = (dataz['arr_0'],dataz['arr_1'])
+    # data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    # data = cleanup_data(data)
+    # data = generate_N_grams(data)
+    # data = convert_to_numpy(data)
+    # dataz = np.load('data\\5_gram_dataset.npz')
+    dataz = np.load(os.path.join(args.data_folder, args.input_file))
+    data = (dataz['arr_0'], dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model(n_hidden_layers=1)
 
@@ -532,17 +504,5 @@ def main(args):
     plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
     plt.show()
 
-    return
 
-
-if __name__ == "__main__":
-    start = datetime.now()
-    args = parse_arguments()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print(f"running on {device}")
-    print("LSTM Spelling Classifier")
-    print(vars(args))
-    print()
-    main(args)
-    print(datetime.now()-start)
-
+    print(datetime.now() - start)
