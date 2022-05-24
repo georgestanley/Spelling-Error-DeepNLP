@@ -423,21 +423,6 @@ def main(args):
     #     "epochs":30
     # }
 
-
-
-    return
-
-
-if __name__ == "__main__":
-    start = datetime.now()
-    args = parse_arguments()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print(f"running on {device}")
-    print("LSTM Spelling Classifier with Context")
-    print(vars(args))
-    print()
-    #main(args)
-
     logger = get_logger(args.output_folder, args.exp_name)
     model_type = 'RNN'
     n_letters = len(all_letters)
@@ -505,4 +490,16 @@ if __name__ == "__main__":
     plt.show()
 
 
+    return
+
+
+if __name__ == "__main__":
+    start = datetime.now()
+    args = parse_arguments()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print(f"running on {device}")
+    print("LSTM Spelling Classifier with Context")
+    print(vars(args))
+    print()
+    main(args)
     print(datetime.now() - start)
