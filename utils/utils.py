@@ -1,20 +1,46 @@
+import matplotlib.pyplot as plt
 import string
 from nltk.corpus.reader import WordListCorpusReader
 from nltk.corpus import stopwords
 import numpy as np
 import os, logging, datetime
 import time
+import torch
 
 alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
 all_letters = string.ascii_letters + " .,;'"
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, dim=1, largest=True, sorted=True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+
+def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=None, num_classes=1):
+    if scalar_dict:
+        [log.add_scalar(k, v, save_step) for k, v in scalar_dict.items()]
+    if text_dict:
+        [log.add_text(k, v, save_step) for k, v in text_dict.items()]
+    log.flush()
 
 
 def int2char(x):
     return alphabet_list[x]
 
 def get_rand01():
-    return np.random.choice([0,1], p=[0.25,0.75])
+    return np.random.choice([0,1], p=[0.10,0.90])
 
 
 def preapre_dataset():
@@ -147,3 +173,41 @@ def timeit(func):
         return result
 
     return measure_time
+
+def plot_graphs(n_epoch,model_folder,logger, train_losses,val_losses, val_accuracies, val_f1s):
+    # create plot
+    plt.ion()
+    train_losses.pop(0)
+    plt.plot(np.arange(n_epoch ), train_losses)
+    logger.info('train loss: {}'.format(train_losses))
+    plt.title('Train Loss')
+    plt.ioff()
+    plt.savefig(fname=os.path.join(model_folder, "plot_train_loss.png"))
+
+    #plt.show()
+
+    plt.ion()
+    val_losses.pop(0)
+    plt.plot(np.arange(n_epoch ), val_losses)
+    logger.info('val loss: {}'.format(val_losses))
+    plt.title('Val Loss')
+    plt.ioff()
+    plt.savefig(fname=os.path.join(model_folder, "plot_val_loss.png"))
+    #plt.show()
+
+    plt.ion()
+    val_accuracies.pop(0)
+    plt.plot(np.arange(n_epoch ), val_accuracies)
+    logger.info('val acc: {}'.format(val_accuracies))
+    plt.title('Val Acc')
+    plt.ioff()
+    plt.savefig(fname=os.path.join(model_folder, "plot_val_acc.png"))
+    #plt.show()
+
+    plt.ion()
+    val_f1s.pop(0)
+    plt.plot(np.arange(n_epoch ), val_f1s)
+    logger.info('val f1s: {}'.format(val_f1s))
+    plt.title('Val F1')
+    plt.ioff()
+    plt.savefig(fname=os.path.join(model_folder, "plot_val_f1.png"))
