@@ -129,7 +129,7 @@ def generate_N_grams(data, ngram=5):
 
     new_dataset = np.array(new_dataset)
     labels = np.zeros(len(new_dataset))
-    return new_dataset, labels
+    return new_dataset, labels #new_dataset: ndarray(13499,1,5) ; labels : ndarray(13499)
 
 
 class MyDataset(torch.utils.data.Dataset):
@@ -169,7 +169,7 @@ def convert_to_pytorch_dataset(data):
                                   )
 
     val_dataset = MyDataset(data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False, collate_fn=collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
@@ -200,7 +200,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
+        X_vec, Y_vec, X_token = vectorize_data2(data)
         X_vec = X_vec.to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
@@ -238,7 +238,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
     model.eval()
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, X_token = vectorize_data(data)  # xx shape:
+            X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
             X_vec = X_vec.to(device)
             # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
