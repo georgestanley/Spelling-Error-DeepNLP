@@ -8,7 +8,6 @@ import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log
-# import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
@@ -17,8 +16,6 @@ all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
 n_iters = 100000
 print_every = 1000
-plot_every = 1000
-batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
 alph_len = len(alph)
 
@@ -62,12 +59,7 @@ def get_wikipedia_text(file_name):
     with open(file_name, encoding="utf-8") as f:
         for i, line in enumerate(f):
             data.append(json.loads(line)['text'].lower())
-
-        # data = pd.DataFrame(data, columns=['text'])
         data = np.array(data)
-
-        # data = f.read()
-        # words = json.loads(data)
     return data
 
 
@@ -84,7 +76,6 @@ def remove_punctuation(texts):
     return new
 
 
-# @timeit
 def cleanup_data(data):
     """
     :param: data :Pandas dataframe [1 column]
@@ -197,7 +188,6 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
-    model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data2(data)
@@ -207,8 +197,6 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
-        # wandb.log({"train_loss":loss})
-        # wandb.watch(model)
         loss.backward()
         optim.step()
 
@@ -365,6 +353,10 @@ def binarize2(tokens, isLabelVector=False):
 
 
 def vectorize_data2(data_arr):
+    '''
+    Uses np broadcasting instead of earlier technique
+    :param data_arr: ndarray (batch_len,6) ; e.g. [[['big' 'brother' 'ninetepn' 'eightyfour' 'big' '0']]]
+    '''
     data_arr = np.column_stack((data_arr[0], data_arr[1]))
     data_arr = insert_errors(data_arr)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
@@ -405,7 +397,7 @@ def insert_errors(data):  #
     :param data: ndarray (batch_size,2)
     :return: data : ndarray ( ?? ,2)
     '''
-    # print('data shape before ', np.shape(data))
+    #print('data shape before ', np.shape(data))
     temp = []
     for i, x in enumerate(data[:, 2]):
         if get_rand01() == 1:
@@ -432,7 +424,7 @@ def insert_errors(data):  #
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
-    # print('data shape after ', np.shape(data))
+    #print('data shape after ', np.shape(data))
     return data
 
 

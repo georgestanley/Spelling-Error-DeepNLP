@@ -16,7 +16,6 @@ from datetime import datetime
 
 import time
 
-
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
 n_iters = 100000
@@ -28,8 +27,9 @@ alph_len = len(alph)
 
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
-#maxlen : dev10 : 66
-#maxlen : development_documents = 174
+
+# maxlen : dev10 : 66
+# maxlen : development_documents = 174
 
 
 def parse_arguments():
@@ -56,6 +56,7 @@ def parse_arguments():
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
     return args
+
 
 def get_wikipedia_text(file_name):
     '''
@@ -101,7 +102,6 @@ def cleanup_data(data):
     return data
 
 
-
 def generate_N_grams(data, ngram=5):
     """
     Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
@@ -116,10 +116,10 @@ def generate_N_grams(data, ngram=5):
     """
 
     new_dataset = []
-    lens=[]
+    lens = []
     maxlen = 0
     for n, text in tqdm(enumerate(data)):
-        # TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
+        # TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python
 
         r = r'\S*\d+\S*'  # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
         text = re.sub(r, '', text)
@@ -127,49 +127,36 @@ def generate_N_grams(data, ngram=5):
         text[:] = [tup for tup in text if tup.isalpha()]
         text[:] = [tup for tup in text if tup.isascii()]
 
-
         for i in range(0, len(text) - ngram + 1):
             x = []
             for j in range(5):
                 x.append(text[i + j])
-            #new_dataset.append([x])
+            # new_dataset.append([x])
             chars = (' '.join(x))
             lens.append(len(chars))
             new_dataset.append(chars)
-            #if len(chars) > maxlen:
-            #    maxlen = len(chars)
-            #    maxsent = chars
-
-    maxlen =60
-    for n  in range(len(new_dataset)):
-        input_seq = ''
-        new_dataset[n] = new_dataset[n][:60]
-        new_dataset[n] = new_dataset[n].ljust(60,'*')
-        #for i in range(len(new_dataset)):
-        xx  = [alph.index(character) for character in new_dataset[n]]
-        new_dataset[n] = xx
-
-
 
     new_dataset = np.array(new_dataset)
-    new_dataset = torch.from_numpy(new_dataset)
-    new_dataset = torch.nn.functional.one_hot(new_dataset.to(torch.int64),num_classes=77)
     labels = np.zeros(len(new_dataset))
-    return new_dataset, labels #new_dataset: Tensor(13499,60,77)
+    #new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
+
+    return new_dataset, labels # new_dataset:
+
 
 def convert_to_pytorch_dataset(data):
     train_dataset = MyDataset(data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False,
-                                  #collate_fn=collate_fn,
+                                  # collate_fn=collate_fn,
                                   num_workers=1, pin_memory=True
                                   )
 
     val_dataset = MyDataset(data)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True,
-                                #collate_fn=collate_fn
+                                # collate_fn=collate_fn
                                 )
 
     return train_dataloader, val_dataloader
+
 
 class MyDataset(torch.utils.data.Dataset):
 
@@ -187,17 +174,6 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-# @timeit
-def collate_fn(batch):
-    temp_x, temp_y = [], []
-    # print(batch)
-    # print(type(batch))
-    # print(len(batch))
-    for x, y in batch:
-        temp_x.append(x)
-        temp_y.append(y)
-
-    return temp_x, temp_y
 
 def initialize_model():
     input_dim = len(alph)
@@ -214,6 +190,65 @@ def initialize_model():
     # criterion = nn.BCEWithLogitsLoss()
 
     return model, criterion, optimizer
+def insert_errors(data):  #
+    '''
+
+    :param data: ndarray (batch_size,2)
+    :return: data : ndarray ( ?? ,2)
+    '''
+    print('data shape before ', np.shape(data))
+    temp = []
+    for i, x in enumerate(data[:, 2]):
+        if get_rand01() == 1:
+            # Type 1: Replace a character
+            yy = np.array2string(x).replace("'", "")
+            rep_char = int2char(np.random.randint(0, 26))
+            rep_pos = np.random.randint(low=0, high=len(yy))
+            # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+            false_str = data[i][:-1]
+            false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+            temp.append(false_str)
+            # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+
+        '''
+        if get_rand01() == 1 and len(x) > 1:
+            # Type 2: delete a character
+            yy = np.array2string(x).replace("'", "")
+            rep_pos = np.random.randint(low=0, high=len(yy))
+            # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
+            false_str = data[i][:-1]
+            false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
+            temp.append(false_str)
+        '''
+    x2 = np.ones((len(temp)))
+    x = np.column_stack((temp, x2))
+    data = np.concatenate((data, x))
+    print('data shape after ', np.shape(data))
+    return data
+
+
+def one_hot_encode_data(new_dataset , labels):
+
+    maxlen = 60
+    new_dataset = insert_errors(new_dataset)
+    for n in range(len(new_dataset)):
+        input_seq = ''
+        new_dataset[n] = new_dataset[n][:60]
+        new_dataset[n] = new_dataset[n].ljust(maxlen, '*')
+        # for i in range(len(new_dataset)):
+        xx = [alph.index(character) for character in new_dataset[n]]
+        new_dataset[n] = xx
+
+    # new_dataset : list(dataset_len) ; e.g. [[27, 34, 32, 76, 21, ... ], [28,25,25,..]]
+    new_dataset = np.array(new_dataset)
+    new_dataset = torch.from_numpy(new_dataset)
+    new_dataset = torch.nn.functional.one_hot(new_dataset.to(torch.int64), num_classes=77)
+    labels = np.zeros(len(new_dataset))
+    labels = torch.from_numpy(labels)
+
+    return new_dataset, labels
+
+
 def train_model(train_loader, model, criterion, optim, writer, epoch):
     total_loss = 0
     total_accuracy = 0
@@ -221,17 +256,15 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-
-        #X_vec, Y_vec, X_token = vectorize_data2(data)
-        X_vec, Y_vec = data[0], data[1]
+        # X_vec, Y_vec, X_token = vectorize_data2(data)
+        X_vec, Y_vec = one_hot_encode_data(new_dataset=data[0],labels=data[1])
+        #X_vec, Y_vec = data[0], data[1]
         X_vec = X_vec.type(torch.FloatTensor).to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
-        # wandb.log({"train_loss":loss})
-        # wandb.watch(model)
         loss.backward()
         optim.step()
 
@@ -249,7 +282,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     return mean_train_loss, mean_train_accuracy
 
 
-def val_model(val_loader, model, criterion, logger, writer, epoch ):
+def val_model(val_loader, model, criterion, logger, writer, epoch):
     # TODO: Improve this validation section
     correct = 0
     total = 0
@@ -260,33 +293,33 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
     total = 0
     model.eval()
     with torch.no_grad():
-        for i, data in enumerate(val_loader):
-            X_vec, Y_vec = data[0], data[1]
-            X_vec = X_vec.type(torch.FloatTensor).to(device)
-            # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
-            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+        # for i, data in enumerate(val_loader):
+        data = next(iter(val_loader))
+        X_vec, Y_vec = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
+        #X_vec, Y_vec = data[0], data[1]
+        X_vec = X_vec.type(torch.FloatTensor).to(device)
+        # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
+        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
-            outputs = model(X_vec)  # (n_words, 2)
+        outputs = model(X_vec)  # (n_words, 2)
 
-            # Get predictions from the maximum value
-            _, predicted = torch.max(outputs.data, 1)
+        # Get predictions from the maximum value
+        _, predicted = torch.max(outputs.data, 1)
+        total += Y_vec.size(0)
+        loss = criterion(outputs, Y_vec)
+        correct += (predicted == Y_vec).sum()
 
-            # Total number of labels
-            total += Y_vec.size(0)
+        f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+        # check for an index
+        # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
 
-            loss = criterion(outputs, Y_vec)
-            # Total correct predictions
-            correct += (predicted == Y_vec).sum()
-
-            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-            # check for an index
-            # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
-
-            batch_size = Y_vec.size(0)
-            total_loss += loss.item() * batch_size
-            total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
-            total += batch_size
-            break
+        batch_size = Y_vec.size(0)
+        total_loss += loss.item() * batch_size
+        total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
+        accuracy2 = 100 * correct / total
+        print(f"Acc1 ={total_accuracy},Acc2 = {accuracy2}")
+        total += batch_size
+        # break
 
         mean_val_loss = total_loss / total
         mean_val_accuracy = total_accuracy / total
@@ -294,25 +327,24 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
         print(f"mean_val_loss:{mean_val_loss} mean_val_acc;{mean_val_accuracy}")
         save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
+    # accuracy = 100 * correct / total
 
-    #accuracy = 100 * correct / total
-
-    #print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
 
     return mean_val_loss, mean_val_accuracy, f1
 
 
 def main(args):
-
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
     data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
     data = cleanup_data(data)
     data = generate_N_grams(data)
-    #data = convert_to_numpy(data)
+    #data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
+    # data = convert_to_numpy(data)
     # dataz = np.load('data\\5_gram_dataset.npz')
-    #dataz = np.load(os.path.join(args.data_folder, args.input_file))
-    #data = (dataz['arr_0'], dataz['arr_1'])
+    # dataz = np.load(os.path.join(args.data_folder, args.input_file))
+    # data = (dataz['arr_0'], dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(data)
     model, criterion, optim = initialize_model()
 
@@ -329,7 +361,7 @@ def main(args):
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
-        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer,epoch)
+        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch)
         val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')
@@ -347,8 +379,7 @@ def main(args):
         val_accuracies.append(val_acc)
         val_f1s.append(val_f1)
 
-    plot_graphs(n_epoch,args.model_folder, logger, train_losses, val_losses, val_accuracies, val_f1s)
-
+    plot_graphs(n_epoch, args.model_folder, logger, train_losses, val_losses, val_accuracies, val_f1s)
 
     return
 
