@@ -266,8 +266,12 @@ def train_model(train_loader, model, criterion, optim, epoch):
         optim.step()
 
         running_loss += loss.item()
+        batch_size = Y_vec.size(0)
 
-    return running_loss
+    alpha = (len(train_loader.dataset))/batch_size
+    loss /= alpha
+
+    return loss
 
 
 def val_model(val_loader, model, criterion, logger,epoch,writer ):
@@ -292,7 +296,7 @@ def val_model(val_loader, model, criterion, logger,epoch,writer ):
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
             batch_size = Y_vec.size(0)
-            total_loss += loss.item() * batch_size
+            total_loss += loss.item()
             temp_to_print = np.column_stack((X_token,Y_vec.cpu(),predicted.cpu()))
             to_print = np.row_stack((to_print,temp_to_print))
 

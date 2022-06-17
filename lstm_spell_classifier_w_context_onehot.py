@@ -1,3 +1,5 @@
+import collections
+
 import string, argparse, json, os, re
 import numpy as np
 import torch
@@ -9,7 +11,7 @@ from Model import LSTMModel
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log
+from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log, get_rand123
 # import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
@@ -36,9 +38,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
-    parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--input_file', type=str, default='dev_01.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
@@ -138,9 +140,9 @@ def generate_N_grams(data, ngram=5):
 
     new_dataset = np.array(new_dataset)
     labels = np.zeros(len(new_dataset))
-    #new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
+    # new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
 
-    return new_dataset, labels # new_dataset:
+    return new_dataset, labels  # new_dataset:
 
 
 def convert_to_pytorch_dataset(data):
@@ -174,7 +176,6 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-
 def initialize_model():
     input_dim = len(alph)
     hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
@@ -190,61 +191,66 @@ def initialize_model():
     # criterion = nn.BCEWithLogitsLoss()
 
     return model, criterion, optimizer
+
+
 def insert_errors(data):  #
     '''
 
     :param data: ndarray (batch_size,2)
     :return: data : ndarray ( ?? ,2)
     '''
-    print('data shape before ', np.shape(data))
+
+    # print('data shape before ', np.shape(data))
     temp = []
-    for i, x in enumerate(data[:, 2]):
-        if get_rand01() == 1:
-            # Type 1: Replace a character
-            yy = np.array2string(x).replace("'", "")
-            rep_char = int2char(np.random.randint(0, 26))
-            rep_pos = np.random.randint(low=0, high=len(yy))
-            # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
-            false_str = data[i][:-1]
-            false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
-            temp.append(false_str)
-            # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+    for i, x in enumerate(data):
+        switch_val = get_rand123()
+        if switch_val == 1:
+            if get_rand01() == 1:
+                # Type 1: Replace a character
+                x = x.replace("'", "")
+                x = x.split()
+                yy = x[2]
+                # yy = np.array2string(x).replace("'", "")
+                rep_char = int2char(np.random.randint(0, 26))
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                x[2] = false_word
+                temp.append(' '.join(x))  # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+        elif switch_val == 2:
+            if get_rand01() == 1 and len(x) > 1:
+                # Type 2: delete a character
+                x = x.replace("'", "").split()
+                yy = x[2]
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
+                #false_str = data[i][:-1]
+                false_word = yy[0:rep_pos] + yy[rep_pos + 1:]
+                x[2] = false_word
+                temp.append(' '.join(x))
+        elif switch_val == 3:
+            pass
+    label_true = [0] * len(data)
+    label_false = [1] * len(temp)
+    labels = label_true + label_false
+    data = data + temp
+    return data, labels
 
-        '''
-        if get_rand01() == 1 and len(x) > 1:
-            # Type 2: delete a character
-            yy = np.array2string(x).replace("'", "")
-            rep_pos = np.random.randint(low=0, high=len(yy))
-            # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
-            false_str = data[i][:-1]
-            false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
-            temp.append(false_str)
-        '''
-    x2 = np.ones((len(temp)))
-    x = np.column_stack((temp, x2))
-    data = np.concatenate((data, x))
-    print('data shape after ', np.shape(data))
-    return data
 
-
-def one_hot_encode_data(new_dataset , labels):
-
+def one_hot_encode_data(new_dataset, labels):
     maxlen = 60
-    new_dataset = insert_errors(new_dataset)
+    new_dataset, labels = insert_errors(new_dataset)
     for n in range(len(new_dataset)):
         input_seq = ''
         new_dataset[n] = new_dataset[n][:60]
         new_dataset[n] = new_dataset[n].ljust(maxlen, '*')
         # for i in range(len(new_dataset)):
         xx = [alph.index(character) for character in new_dataset[n]]
-        new_dataset[n] = xx
+        new_dataset[n] = xx  # new_dataset : list(dataset_len) ; e.g. [[27, 34, 32, 76, 21, ... ], [28,25,25,..]]
 
-    # new_dataset : list(dataset_len) ; e.g. [[27, 34, 32, 76, 21, ... ], [28,25,25,..]]
     new_dataset = np.array(new_dataset)
     new_dataset = torch.from_numpy(new_dataset)
     new_dataset = torch.nn.functional.one_hot(new_dataset.to(torch.int64), num_classes=77)
-    labels = np.zeros(len(new_dataset))
-    labels = torch.from_numpy(labels)
+    labels = torch.from_numpy(np.array(labels))
 
     return new_dataset, labels
 
@@ -253,28 +259,31 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
+    correct = 0
     model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-        # X_vec, Y_vec, X_token = vectorize_data2(data)
-        X_vec, Y_vec = one_hot_encode_data(new_dataset=data[0],labels=data[1])
-        #X_vec, Y_vec = data[0], data[1]
+        X_vec, Y_vec = one_hot_encode_data(new_dataset=data[0], labels=data[1])
         X_vec = X_vec.type(torch.FloatTensor).to(device)
-        # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
+        ssg, predicted = torch.max(outputs.data, 1)
+        correct += (predicted == Y_vec).sum()
+        # c = collections.Counter(predicted.cpu().detach().numpy())
+        # print("Input Distribution",c)
         loss.backward()
         optim.step()
+        total += Y_vec.size(0)
 
         batch_size = Y_vec.size(0)
-        total_loss += loss.item() * batch_size
-        total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
-        total += batch_size
+        total_loss += loss.item()
 
-    mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
+        # mean_val_loss = total_loss / total
+    alpha = (len(train_loader.dataset)) / batch_size
+    mean_train_loss = total_loss / alpha
+    mean_train_accuracy = 100 * correct / total
     scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
     print(f"mean_train_loss:{mean_train_loss} mean_train_acc;{mean_train_accuracy}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
@@ -296,13 +305,10 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         # for i, data in enumerate(val_loader):
         data = next(iter(val_loader))
         X_vec, Y_vec = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
-        #X_vec, Y_vec = data[0], data[1]
         X_vec = X_vec.type(torch.FloatTensor).to(device)
-        # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
         outputs = model(X_vec)  # (n_words, 2)
-
         # Get predictions from the maximum value
         _, predicted = torch.max(outputs.data, 1)
         total += Y_vec.size(0)
@@ -310,28 +316,27 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         correct += (predicted == Y_vec).sum()
 
         f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-        # check for an index
-        # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
-
+        c = collections.Counter(predicted.cpu().detach().numpy())
+        print(c)
         batch_size = Y_vec.size(0)
-        total_loss += loss.item() * batch_size
-        total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
-        accuracy2 = 100 * correct / total
-        print(f"Acc1 ={total_accuracy},Acc2 = {accuracy2}")
-        total += batch_size
-        # break
+        total_loss += loss.item()
 
-        mean_val_loss = total_loss / total
-        mean_val_accuracy = total_accuracy / total
-        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
-        print(f"mean_val_loss:{mean_val_loss} mean_val_acc;{mean_val_accuracy}")
-        save_in_log(writer, epoch, scalar_dict=scalar_dict)
+        # temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+        # to_print = np.row_stack((to_print, temp_to_print))
 
+        # to_print = pd.DataFrame(to_print)
+        # to_print.to_csv('data2.csv')
+        # mean_val_loss = total_loss / total
+        # alpha = (len(val_loader.dataset)) / batch_size
+    alpha = 1000 / batch_size
+    mean_val_loss = total_loss / alpha
+    mean_val_accuracy = 100 * correct / total
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
+    print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+          f"total_samples={total}")
     # accuracy = 100 * correct / total
-
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
-
-    return mean_val_loss, mean_val_accuracy, f1
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 
 def main(args):
@@ -340,7 +345,7 @@ def main(args):
     data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
     data = cleanup_data(data)
     data = generate_N_grams(data)
-    #data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
+    # data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
     # data = convert_to_numpy(data)
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))

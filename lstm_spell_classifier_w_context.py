@@ -1,3 +1,6 @@
+import collections
+
+import pandas as pd
 import string, argparse, json, os, re
 import numpy as np
 import torch
@@ -29,7 +32,7 @@ def parse_arguments():
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
@@ -156,7 +159,7 @@ def collate_fn(batch):
 def convert_to_pytorch_dataset(data):
     train_dataset = MyDataset(data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn,
-                                  num_workers=1, pin_memory=True
+                                  #num_workers=1,pin_memory=True
                                   )
 
     val_dataset = MyDataset(data)
@@ -188,7 +191,8 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
-
+    correct = 0
+    #model.train()
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data2(data)
         X_vec = X_vec.to(device)
@@ -197,16 +201,21 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
+        _, predicted = torch.max(outputs.data, 1)
+        correct += (predicted == Y_vec).sum()
+        #c = collections.Counter(Y_vec.cpu().detach().numpy())
+        #print("Input Distribution",c)
         loss.backward()
         optim.step()
+        total += Y_vec.size(0)
 
         batch_size = Y_vec.size(0)
-        total_loss += loss.item() * batch_size
-        total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
-        total += batch_size
+        total_loss += loss.item()
 
-    mean_train_loss = total_loss / total
-    mean_train_accuracy = total_accuracy / total
+    # mean_val_loss = total_loss / total
+    alpha = (len(train_loader.dataset)) / batch_size
+    mean_train_loss = total_loss / alpha
+    mean_train_accuracy = 100 * correct / total
     scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
     print(f"mean_train_loss:{mean_train_loss} mean_train_acc;{mean_train_accuracy}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
@@ -223,7 +232,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
     total_loss = 0
     total_accuracy = 0
     total = 0
-    model.eval()
+    #model.eval()
+    to_print=np.empty((1,3))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
@@ -235,36 +245,34 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
 
             # Get predictions from the maximum value
             _, predicted = torch.max(outputs.data, 1)
-
-            # Total number of labels
             total += Y_vec.size(0)
 
             loss = criterion(outputs, Y_vec)
-            # Total correct predictions
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-            # check for an index
-            # print(f" Word = {X_token[60]} Prediction= {predicted[60]}")
-
+            c=collections.Counter(predicted.cpu().detach().numpy())
+            print(c)
             batch_size = Y_vec.size(0)
-            total_loss += loss.item() * batch_size
-            total_accuracy += accuracy(outputs, Y_vec)[0].item() * batch_size
-            total += batch_size
+            total_loss += loss.item()
             break
+            #temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            #to_print = np.row_stack((to_print, temp_to_print))
 
-        mean_val_loss = total_loss / total
-        mean_val_accuracy = total_accuracy / total
+        #to_print = pd.DataFrame(to_print)
+        #to_print.to_csv('data2.csv')
+        # mean_val_loss = total_loss / total
+        #alpha = (len(val_loader.dataset)) / batch_size
+        alpha = 1000 / batch_size
+        mean_val_loss = total_loss/ alpha
+        mean_val_accuracy = 100 * correct / total
         scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
-        print(f"mean_val_loss:{mean_val_loss} mean_val_acc;{mean_val_accuracy}")
-        save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-
+        print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+              f"total_samples={total}")
     #accuracy = 100 * correct / total
-
     #print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
 
-    return mean_val_loss, mean_val_accuracy, f1
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 
 def binarize(tokens, alph):
@@ -328,7 +336,6 @@ def vectorize_data(data_arr):
 
     X_token = np.asarray(X_token)
     X_token = X_token[r]
-
     return X_vec, Y_vec, X_token
 
 
@@ -365,7 +372,7 @@ def vectorize_data2(data_arr):
     X_token = data_arr[:, :4]
 
     func3 = np.frompyfunc(binarize2, 2, 1)
-    a = data_arr[:, :4]
+    a = data_arr[:, :5]
     b = data_arr[:, -1]
     X = func3(a, False)
     Y = func3(b, True)
@@ -379,7 +386,6 @@ def vectorize_data2(data_arr):
 
     # X_vec = torch.from_numpy(X_vec)
     # Y_vec = torch.from_numpy(Y)
-
     r = torch.randperm(X_vec.size()[0])
     X_vec = X_vec[r]
     Y_vec = Y_vec[r]
@@ -438,13 +444,13 @@ def test_dataloader(my_dataloader):
 def main(args):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
-    data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
-    data = cleanup_data(data)
-    data = generate_N_grams(data)
+    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    train_data = cleanup_data(train_data)
+    train_data = generate_N_grams(train_data)
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(data)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data)
     model, criterion, optim = initialize_model()
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])

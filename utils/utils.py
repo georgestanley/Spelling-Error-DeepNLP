@@ -42,11 +42,19 @@ def int2char(x):
 
 
 def get_rand01():
+    '''
+    Random choice of whether to generate error or not.
+    0 -> Do not generate error
+    1 -> Generate error word
+    '''
     return np.random.choice([0, 1], p=[0.10, 0.90])
 
 
 def get_rand123():
-    return np.random.choice([1, 2, 3], p=[0.34, 0.33, 0.33])
+    '''
+    Random choice of Error type to apply on selected string
+    '''
+    return np.random.choice([1, 2, 3], p=[0.50, 0.50, 0])
 
 
 def preapre_dataset():
