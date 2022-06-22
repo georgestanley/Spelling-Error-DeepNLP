@@ -10,17 +10,19 @@ from lstm_spell_classifier_w_context import remove_punctuation, cleanup_data, ge
 class Test_lstm_w_context(TestCase):
 
     def test_get_wikipedia_text(self):
-        test_array = np.array('big brother is a  fictional character')
-        self.assertEqual(get_wikipedia_text('test_file.jsonl'), test_array)
+        test_array = np.array('big brother is a fictional character')
+        np.testing.assert_array_equal(get_wikipedia_text('test_file.jsonl'), test_array)
 
     def test_remove_punctuation(self):
-         self.assertEqual(remove_punctuation(np.array(['Can, I be ! at office.'])),
-                          np.array(['Can I be  at office']))
+         np.testing.assert_array_equal(remove_punctuation(np.array(['Can, I be ! at office.','will you be there ?'])),
+                          np.array(['Can I be  at office','will you be there ']))
 
-    # def test_cleanup_data(self):
-    #     #pd_testing.assert_frame_equal(cleanup_data(pd.DataFrame({'Freiburg, will not fall!!'}, columns=['text'])),
-    #     #                              pd.DataFrame({'Freiburg will not fall'}, columns=['text']))
-    #     pass
+    def test_cleanup_data(self):
+         #pd_testing.assert_frame_equal(cleanup_data(pd.DataFrame({'Freiburg, will not fall!!'}, columns=['text'])),
+         #                              pd.DataFrame({'Freiburg will not fall'}, columns=['text']))
+         np.testing.assert_array_equal(remove_punctuation(np.array(['Can, I be ! at office.', 'will you be there ?'])),
+                                       np.array(['Can I be  at office', 'will you be there ']))
+
     #
     # def test_generate_N_grams(self):
     #     dataset_old = pd.DataFrame({'the economy will be in distress'}, columns=['text'])
