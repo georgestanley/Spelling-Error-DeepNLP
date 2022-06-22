@@ -38,9 +38,10 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
-    parser.add_argument('--input_file', type=str, default='dev_01.jsonl')
+    parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str , default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
@@ -53,7 +54,7 @@ def parse_arguments():
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_context', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_context_onehot', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "{}_models".format(exp_id)))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
 
@@ -145,14 +146,14 @@ def generate_N_grams(data, ngram=5):
     return new_dataset, labels  # new_dataset:
 
 
-def convert_to_pytorch_dataset(data):
-    train_dataset = MyDataset(data)
+def convert_to_pytorch_dataset(train_data, val_data):
+    train_dataset = MyDataset(train_data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False,
                                   # collate_fn=collate_fn,
                                   num_workers=1, pin_memory=True
                                   )
 
-    val_dataset = MyDataset(data)
+    val_dataset = MyDataset(val_data)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True,
                                 # collate_fn=collate_fn
                                 )
@@ -213,7 +214,7 @@ def insert_errors(data):  #
                 # yy = np.array2string(x).replace("'", "")
                 rep_char = int2char(np.random.randint(0, 26))
                 rep_pos = np.random.randint(low=0, high=len(yy))
-                false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                false_word = yy[0:rep_pos] + 'X' + yy[rep_pos + 1:]
                 x[2] = false_word
                 temp.append(' '.join(x))  # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
         elif switch_val == 2:
@@ -302,38 +303,39 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     total = 0
     model.eval()
     with torch.no_grad():
-        # for i, data in enumerate(val_loader):
-        data = next(iter(val_loader))
-        X_vec, Y_vec = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
-        X_vec = X_vec.type(torch.FloatTensor).to(device)
-        Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+        for i, data in enumerate(val_loader):
+            #data = next(iter(val_loader))
+            X_vec, Y_vec = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
+            X_vec = X_vec.type(torch.FloatTensor).to(device)
+            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
-        outputs = model(X_vec)  # (n_words, 2)
-        # Get predictions from the maximum value
-        _, predicted = torch.max(outputs.data, 1)
-        total += Y_vec.size(0)
-        loss = criterion(outputs, Y_vec)
-        correct += (predicted == Y_vec).sum()
+            outputs = model(X_vec)  # (n_words, 2)
+            # Get predictions from the maximum value
+            _, predicted = torch.max(outputs.data, 1)
+            total += Y_vec.size(0)
+            loss = criterion(outputs, Y_vec)
+            correct += (predicted == Y_vec).sum()
 
-        f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-        c = collections.Counter(predicted.cpu().detach().numpy())
-        print(c)
-        batch_size = Y_vec.size(0)
-        total_loss += loss.item()
+            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            c = collections.Counter(predicted.cpu().detach().numpy())
+            print(c)
+            batch_size = Y_vec.size(0)
+            total_loss += loss.item()
 
-        # temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
-        # to_print = np.row_stack((to_print, temp_to_print))
+            # temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            # to_print = np.row_stack((to_print, temp_to_print))
 
         # to_print = pd.DataFrame(to_print)
         # to_print.to_csv('data2.csv')
         # mean_val_loss = total_loss / total
-        # alpha = (len(val_loader.dataset)) / batch_size
-    alpha = 1000 / batch_size
-    mean_val_loss = total_loss / alpha
-    mean_val_accuracy = 100 * correct / total
-    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
-    print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+        alpha = (len(val_loader.dataset)) / batch_size
+        # alpha = 1000 / batch_size
+        mean_val_loss = total_loss / alpha
+        mean_val_accuracy = 100 * correct / total
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
+        print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
           f"total_samples={total}")
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
     # accuracy = 100 * correct / total
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     return mean_val_loss, mean_val_accuracy.cpu(), f1
@@ -342,15 +344,18 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
 def main(args):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
-    data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
-    data = cleanup_data(data)
-    data = generate_N_grams(data)
+    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    train_data = cleanup_data(train_data)
+    train_data = generate_N_grams(train_data)
+    val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
+    val_data = cleanup_data(val_data)
+    val_data = generate_N_grams(val_data)
     # data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
     # data = convert_to_numpy(data)
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(data)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data,val_data)
     model, criterion, optim = initialize_model()
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])

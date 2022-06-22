@@ -77,7 +77,7 @@ class LSTMModel(nn.Module):
         # out.size() --> 100, 28, 100
         # out[:, -1, :] --> 100, 100 --> just want last time step hidden states!
         out = self.fc(out[:, -1, :])
-        out = self.sig(out)
+        #out = self.sig(out)
         # out.size() --> 100, 10
 
         return out

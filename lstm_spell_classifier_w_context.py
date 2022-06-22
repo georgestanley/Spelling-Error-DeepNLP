@@ -10,10 +10,11 @@ from Model import LSTMModel
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log
+from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log, get_rand123
 from sklearn.metrics import f1_score
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
+import torch.distributed as dist
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -25,12 +26,12 @@ alph_len = len(alph)
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
@@ -54,26 +55,21 @@ def parse_arguments():
 
 def get_wikipedia_text(file_name):
     '''
-    Returns a pandas Dataframe containing the extracted texts.
-    :param file_name:
-    :return:
+    extracts the text part of the json file and returns as a numpy array
+    and sets it to lower case
     '''
     data = []
     with open(file_name, encoding="utf-8") as f:
         for i, line in enumerate(f):
-            data.append(json.loads(line)['text'].lower())
+            data.append(json.loads(line)['text'].lower()) ##TODO : Check if lower needed
         data = np.array(data)
     return data
 
 
-# @timeit
 def remove_punctuation(texts):
     '''
-
-    :param text: String
-    :return: ans: String
+    removes the punctuations
     '''
-    ans = ""
     stripPunct = str.maketrans('', '', string.punctuation)
     new = np.array([i.translate(stripPunct) for i in texts])
     return new
@@ -121,8 +117,9 @@ def generate_N_grams(data, ngram=5):
                 x.append(text[i + j])
             new_dataset.append([x])
 
-    new_dataset = np.array(new_dataset)
-    labels = np.zeros(len(new_dataset))
+    #new_dataset = np.array(new_dataset)
+    #labels = np.zeros(len(new_dataset))
+    labels = [0]*len(new_dataset)
     return new_dataset, labels #new_dataset: ndarray(13499,1,5) ; labels : ndarray(13499)
 
 
@@ -156,13 +153,13 @@ def collate_fn(batch):
 
 
 # @timeit
-def convert_to_pytorch_dataset(data):
-    train_dataset = MyDataset(data)
+def convert_to_pytorch_dataset(train_data, val_data):
+    train_dataset = MyDataset(train_data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn,
                                   #num_workers=1,pin_memory=True
                                   )
 
-    val_dataset = MyDataset(data)
+    val_dataset = MyDataset(val_data)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
@@ -176,7 +173,7 @@ def initialize_model():
     output_dim = 2
 
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
-    model.to(device)
+    model = model.to(device)
 
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -199,6 +196,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
+
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
         _, predicted = torch.max(outputs.data, 1)
@@ -233,7 +231,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
     total_accuracy = 0
     total = 0
     #model.eval()
-    to_print=np.empty((1,3))
+    to_print=np.empty((1,7))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
@@ -255,15 +253,16 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
             print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
-            break
-            #temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
-            #to_print = np.row_stack((to_print, temp_to_print))
 
-        #to_print = pd.DataFrame(to_print)
+            temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            to_print = np.row_stack((to_print, temp_to_print))
+
+        to_print = pd.DataFrame(to_print)
+        to_print.to_csv(os.path.join(args.model_folder, "data2.csv"))
         #to_print.to_csv('data2.csv')
         # mean_val_loss = total_loss / total
-        #alpha = (len(val_loader.dataset)) / batch_size
-        alpha = 1000 / batch_size
+        alpha = (len(val_loader.dataset)) / batch_size
+        #alpha = 1000 / batch_size
         mean_val_loss = total_loss/ alpha
         mean_val_accuracy = 100 * correct / total
         scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
@@ -271,6 +270,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch ):
               f"total_samples={total}")
     #accuracy = 100 * correct / total
     #print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy.cpu(), f1
 
@@ -369,7 +369,7 @@ def vectorize_data2(data_arr):
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
     Y_vec = torch.zeros((len(data_arr), 1))
-    X_token = data_arr[:, :4]
+    X_token = data_arr[:, :5]
 
     func3 = np.frompyfunc(binarize2, 2, 1)
     a = data_arr[:, :5]
@@ -406,27 +406,30 @@ def insert_errors(data):  #
     #print('data shape before ', np.shape(data))
     temp = []
     for i, x in enumerate(data[:, 2]):
-        if get_rand01() == 1:
-            # Type 1: Replace a character
-            yy = np.array2string(x).replace("'", "")
-            rep_char = int2char(np.random.randint(0, 26))
-            rep_pos = np.random.randint(low=0, high=len(yy))
-            # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
-            false_str = data[i][:-1]
-            false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
-            temp.append(false_str)
-            # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+        switch_val = get_rand123()
+        if switch_val == 1 :
+            if get_rand01() == 1:
+                # Type 1: Replace a character
+                yy = np.array2string(x).replace("'", "")
+                rep_char = int2char(np.random.randint(0, 26))
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                false_str = data[i][:-1].copy()
+                false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                temp.append(false_str)
+                # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+        elif switch_val == 2:
 
-        '''
-        if get_rand01() == 1 and len(x) > 1:
-            # Type 2: delete a character
-            yy = np.array2string(x).replace("'", "")
-            rep_pos = np.random.randint(low=0, high=len(yy))
-            # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
-            false_str = data[i][:-1]
-            false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
-            temp.append(false_str)
-        '''
+            if get_rand01() == 1 and len(x) > 1:
+                # Type 2: delete a character
+                yy = np.array2string(x).replace("'", "")
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
+                false_str = data[i][:-1]
+                false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
+                temp.append(false_str)
+        elif switch_val ==3:
+            pass
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
@@ -447,11 +450,15 @@ def main(args):
     train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
+    val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
+    val_data = cleanup_data(val_data)
+    val_data = generate_N_grams(val_data)
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
     model, criterion, optim = initialize_model()
+    # model = nn.DataParallel(model)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
