@@ -28,7 +28,7 @@ exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('data_folder', type=str, help="folder containing the data")
+    parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
@@ -88,10 +88,8 @@ def cleanup_data(data):
 # @timeit
 def generate_N_grams(data, ngram=5):
     """
-    Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
-    :param data: Pandas dataframe [1 Column]
-    :param ngram: int
-    :return: new_dataset: Pandas dataframe
+    Takes and input a np arrary of texts.
+    Breaks it into list of 5-grams inside a Dataframe
 
     # label meanings:
     # 0: no error in middle word
@@ -116,8 +114,6 @@ def generate_N_grams(data, ngram=5):
                 x.append(text[i + j])
             new_dataset.append([x])
 
-    # new_dataset = np.array(new_dataset)
-    # labels = np.zeros(len(new_dataset))
     labels = [0] * len(new_dataset)
     return new_dataset, labels  # new_dataset: ndarray(13499,1,5) ; labels : ndarray(13499)
 
@@ -138,21 +134,16 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-# @timeit
 def collate_fn(batch):
     temp_x, temp_y = [], []
-    # print(batch)
-    # print(type(batch))
-    # print(len(batch))
+    # print(batch, type(batch), len(batch))
     for x, y in batch:
         temp_x.append(x)
         temp_y.append(y)
-
     return temp_x, temp_y
 
 
-# @timeit
-def convert_to_pytorch_dataset(train_data, val_data):
+def convert_to_pytorch_dataset(train_data, val_data, args):
     train_dataset = MyDataset(train_data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn,
                                   # num_workers=1,pin_memory=True
@@ -164,8 +155,7 @@ def convert_to_pytorch_dataset(train_data, val_data):
     return train_dataloader, val_dataloader
 
 
-# @timeit
-def initialize_model():
+def initialize_model(args, device):
     input_dim = alph_len * 3
     hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = args.hidden_layers
@@ -182,7 +172,6 @@ def initialize_model():
     return model, criterion, optimizer
 
 
-# @timeit
 def train_model(train_loader, model, criterion, optim, writer, epoch):
     total_loss = 0
     total_accuracy = 0
@@ -436,14 +425,7 @@ def insert_errors(data):  #
     return data
 
 
-def test_dataloader(my_dataloader):
-    for i, (word, label) in enumerate(my_dataloader):
-        # print(x)
-        print(i, word, label)
-        return
-
-
-def main(args):
+def main(args, device):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
     train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
@@ -455,8 +437,8 @@ def main(args):
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
-    model, criterion, optim = initialize_model()
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, args)
+    model, criterion, optim = initialize_model(args, device)
     # model = nn.DataParallel(model)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
@@ -503,5 +485,5 @@ if __name__ == "__main__":
     print("LSTM Spelling Classifier with Context")
     print(vars(args))
     print()
-    main(args)
+    main(args, device)
     print(datetime.now() - start)
