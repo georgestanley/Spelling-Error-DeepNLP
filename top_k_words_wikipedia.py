@@ -41,13 +41,8 @@ def count_words(data, k, max_file_lines):
             #print("unable to remove",x)
             pass
     print("Stopwords Removed...")
-    most_occur = c.most_common()
+    # most_occur = c.most_common()
     most_occur = remove_nonalpha_words(c)
-    #dict_d1 = dict(most_occur)#
-    #print("dict for also",dict_d1['also'])
-    #c2 = Counter(dict_d1)
-    #print("len c2",len(c2))#185606
-    #most_occur2 = c2.most_common()
     x = json.dumps(dict(most_occur.most_common()), indent=4)
     #print(x)
     json_file = open("top_"+str(k)+"_words_over_"+str(max_file_lines)+".json","w")
@@ -107,12 +102,12 @@ def remove_nonalpha_words(data):
 
 
 def main ():
-    max_file_lines = 100000
+    max_file_lines = 200000
     k = "all"
     file_path_dev = "D:\Freiburg\MasterProject\datasets\wikipedia_2021-02-20\\development_documents.jsonl"
-    file_path_prod= "D:\Freiburg\MasterProject\datasets\wikipedia_2021-02-20\\training_documents.jsonl"
+    file_path_prod= "D:\\Freiburg\\MasterProject\\data\\training_20000_lines.jsonl"
     file_path_dummy = "D:\\Freiburg\\MasterProject\\data\\3lines_training.jsonl"
-    wikipedia_entries = get_wikipedia_files(file_path_dummy , max_file_lines)
+    wikipedia_entries = get_wikipedia_files(file_path_prod , max_file_lines)
     count_words(wikipedia_entries,k, max_file_lines)
     #remove_nonalpha_words([('1900',23),('1900,',25)])
     #print(wikipedia_entries)

@@ -12,21 +12,21 @@ alphabet_list = list(alphabet_string)
 all_letters = string.ascii_letters + " .,;'"
 
 
-def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
-    with torch.no_grad():
-        maxk = max(topk)
-        batch_size = target.size(0)
-
-        _, pred = output.topk(maxk, dim=1, largest=True, sorted=True)
-        pred = pred.t()
-        correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-        res = []
-        for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
-            res.append(correct_k.mul_(100.0 / batch_size))
-        return res
+# def accuracy(output, target, topk=(1,)):
+#     """Computes the accuracy over the k top predictions for the specified values of k"""
+#     with torch.no_grad():
+#         maxk = max(topk)
+#         batch_size = target.size(0)
+#
+#         _, pred = output.topk(maxk, dim=1, largest=True, sorted=True)
+#         pred = pred.t()
+#         correct = pred.eq(target.view(1, -1).expand_as(pred))
+#
+#         res = []
+#         for k in topk:
+#             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+#             res.append(correct_k.mul_(100.0 / batch_size))
+#         return res
 
 
 def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=None, num_classes=1):
@@ -54,30 +54,30 @@ def get_rand123():
     '''
     Random choice of Error type to apply on selected string
     '''
-    return np.random.choice([1, 2, 3], p=[0.50, 0.50, 0])
+    return np.random.choice([1, 2, 3], p=[1, 0, 0])
 
 
-def preapre_dataset():
-    # worldlist10000 source: MIT
-
-    # x = WordListCorpusReader('.', ['datasets/wordlist.10000.txt'])
-    x = WordListCorpusReader('.', ['datasets/Oxford5000.txt'])
-    print("Lenght =", len(x.words()))
-    words = x.words()
-    # print(words)
-    stopwords_list = list(stopwords.words('english'))
-    # print(stopwords_list)
-    # blog_data.text = blog_data.text.apply(lambda t: ' '.join([words for words in t.split() if words not in stopwords]) )
-    words = [word for word in words if word not in stopwords_list] * 2
-    # print(xx)
-
-    # print(words)
-    data_arr = np.array((words, np.ones(len(words), dtype=np.int))).T
-    print(np.shape(data_arr))
-    # print(data_arr)
-    # x = np.repeat(data_arr, repeats=1)
-
-    return data_arr
+# def preapre_dataset():
+#     # worldlist10000 source: MIT
+#
+#     # x = WordListCorpusReader('.', ['datasets/wordlist.10000.txt'])
+#     x = WordListCorpusReader('.', ['datasets/Oxford5000.txt'])
+#     print("Lenght =", len(x.words()))
+#     words = x.words()
+#     # print(words)
+#     stopwords_list = list(stopwords.words('english'))
+#     # print(stopwords_list)
+#     # blog_data.text = blog_data.text.apply(lambda t: ' '.join([words for words in t.split() if words not in stopwords]) )
+#     words = [word for word in words if word not in stopwords_list] * 2
+#     # print(xx)
+#
+#     # print(words)
+#     data_arr = np.array((words, np.ones(len(words), dtype=np.int))).T
+#     print(np.shape(data_arr))
+#     # print(data_arr)
+#     # x = np.repeat(data_arr, repeats=1)
+#
+#     return data_arr
 
 
 def insert_errors(data_arr):

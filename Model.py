@@ -57,10 +57,10 @@ class LSTMModel(nn.Module):
         # (batch_dim, seq_dim, feature_dim)
         self.lstm = nn.LSTM(input_dim, hidden_dim, layer_dim, batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_dim)
-        self.sig = nn.Sigmoid()
+        # self.sig = nn.Sigmoid()
         self.device = device
 
-    def forward(self, x):
+    def forward(self, x, sequence_lengths):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)
@@ -76,7 +76,11 @@ class LSTMModel(nn.Module):
         # Index hidden state of last time step
         # out.size() --> 100, 28, 100
         # out[:, -1, :] --> 100, 100 --> just want last time step hidden states!
-        out = self.fc(out[:, -1, :])
+        #print(sequence_lengths)
+        out = torch.stack([out[i, length] for i, length in enumerate(sequence_lengths)])  # sequence_lengths is an array containing the length of each sequence without padding
+        out = self.fc(out)
+
+        #out = self.fc(out[:, -1, :])
         #out = self.sig(out)
         # out.size() --> 100, 10
 

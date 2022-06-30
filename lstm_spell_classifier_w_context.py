@@ -5,12 +5,11 @@ import string, argparse, json, os, re
 import numpy as np
 import torch
 from torch import nn
-import matplotlib.pyplot as plt
 from Model import LSTMModel
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, accuracy, save_in_log, get_rand123
+from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123
 from sklearn.metrics import f1_score
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
@@ -33,7 +32,7 @@ def parse_arguments():
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
@@ -194,7 +193,6 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
         loss.backward()
         optim.step()
         total += Y_vec.size(0)
-
         batch_size = Y_vec.size(0)
         total_loss += loss.item()
 
@@ -253,7 +251,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         # alpha = 1000 / batch_size
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
-        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1':f1}
         print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
               f"total_samples={total}")
     # accuracy = 100 * correct / total

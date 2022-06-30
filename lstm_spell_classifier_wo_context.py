@@ -10,7 +10,7 @@ from Model import MLPNetwork, RNN, LSTMModel
 import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, accuracy, save_in_log
+from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log
 # import wandb
 from sklearn.metrics import f1_score
 from datetime import datetime
@@ -27,10 +27,10 @@ exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('data_folder', type=str, help="folder containing the data")
+    parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output-root', type=str, default='results')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--bs', type=int, default=200, help='batch_size')
+    parser.add_argument('--bs', type=int, default=1024, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
@@ -225,7 +225,7 @@ def convert_to_pytorch_dataset(train_data, val_data):
     my_dataloader = DataLoader(my_dataset, batch_size=args.bs, shuffle=True)
 
     val_dataset = MyDataset(val_words, val_labels)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True)
 
     return my_dataloader, val_dataloader
 
@@ -253,8 +253,12 @@ def initialize_model(n_hidden_layers):
     return model, criterion, optimizer
 
 
-def train_model(train_loader, model, criterion, optim, epoch):
+def train_model(train_loader, model, criterion, optim, writer, epoch):
     running_loss = 0.0
+    total_loss = 0
+    correct = 0
+    total = 0
+
     for i, data in enumerate(tqdm(train_loader)):
         X_vec, Y_vec, X_token = vectorize_data(data, with_error=True)  # xx shape:
         X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
@@ -262,16 +266,23 @@ def train_model(train_loader, model, criterion, optim, epoch):
         optim.zero_grad()
         outputs = model(X_vec)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
+        ssg, predicted = torch.max(outputs.data, 1)
+        correct += (predicted == Y_vec).sum()
         loss.backward()
         optim.step()
-
-        running_loss += loss.item()
+        total += Y_vec.size(0)
+        total_loss += loss.item()
         batch_size = Y_vec.size(0)
 
-    alpha = (len(train_loader.dataset))/batch_size
-    loss /= alpha
+    alpha = (len(train_loader.dataset)) / batch_size
 
-    return loss
+    mean_train_loss = total_loss / alpha
+    mean_train_accuracy = 100 * correct / total
+    scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
+    print(f"mean_train_loss:{mean_train_loss} mean_train_acc;{mean_train_accuracy}")
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
+
+    return mean_train_loss, mean_train_accuracy
 
 
 def val_model(val_loader, model, criterion, logger,epoch,writer ):
@@ -302,15 +313,14 @@ def val_model(val_loader, model, criterion, logger,epoch,writer ):
 
     to_print = pd.DataFrame(to_print)
     to_print.to_csv('data2.csv')
-    mean_val_loss = total_loss / total
+    alpha = (len(val_loader.dataset)) / batch_size
+    mean_val_loss = total_loss / alpha
     mean_val_accuracy = 100 * correct / total
     scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
     print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
           f"total_samples={total}")
-    save_in_log(writer, epoch, scalar_dict=scalar_dict)
-
-    return mean_val_loss, mean_val_accuracy, f1
-
+    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 def main(args):
     writer = SummaryWriter()
@@ -318,7 +328,7 @@ def main(args):
     logger = get_logger(args.output_folder, args.exp_name)
     logger.info("Error 1 and 2")
 
-    train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_30000_words_over_200000.json"))
+    train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_all_words_over_200000.json"))
     train_data = convert_to_numpy(train_data)
 
     val_data = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
@@ -338,13 +348,15 @@ def main(args):
 
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
-        train_loss = train_model(train_loader, model, criterion, optim, epoch)
-        val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger,epoch, writer)
+        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch)
+        val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')
         logger.info('Training loss: {}'.format(train_loss))
         logger.info('Validation loss: {}'.format(val_loss))
         logger.info('Validation accuracy: {}'.format(val_acc))
+        logger.info('Validation F1: {}'.format(val_f1))
+
 
         if val_f1 > max(val_f1s) or val_acc > max(val_accuracies):
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best_{}.pth".format(epoch)))
