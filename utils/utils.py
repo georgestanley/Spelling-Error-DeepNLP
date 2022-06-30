@@ -54,7 +54,7 @@ def get_rand123():
     '''
     Random choice of Error type to apply on selected string
     '''
-    return np.random.choice([1, 2, 3], p=[1, 0, 0])
+    return np.random.choice([1, 2, 3], p=[0.5, 0.5, 0])
 
 
 # def preapre_dataset():

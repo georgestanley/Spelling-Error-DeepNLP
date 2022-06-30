@@ -57,6 +57,9 @@ def insert_errors(data):  #
     # print('data shape before ',np.shape(data))
     temp = []
     for x in data[:, 0]:
+        if len(x) <= 3:
+            # we skip words less than 3 alphabets ; same as in neuspell paper
+            continue
         switch_val = get_rand123()
         if switch_val == 1:
             if get_rand01() == 1:
@@ -97,7 +100,7 @@ def binarize(token, label, alph):
     return torch.tensor(bin_all), torch.tensor(int(float(label))), token
 
 
-def vectorize_data(data_arr,with_error):
+def vectorize_data(data_arr,with_error, shuffle):
     # https://arxiv.org/pdf/1608.02214.pdf
     '''
 
@@ -137,13 +140,15 @@ def vectorize_data(data_arr,with_error):
         sys.stdout.flush()
 
     # print(X_vec.shape,Y_vec.shape)
+    if shuffle:
+        r = torch.randperm(X_vec.size()[0])
+        X_vec = X_vec[r]
+        Y_vec = Y_vec[r]
 
-    r = torch.randperm(X_vec.size()[0])
-    X_vec = X_vec[r]
-    Y_vec = Y_vec[r]
-
-    X_token = np.asarray(X_token)
-    X_token = X_token[r]
+        X_token = np.asarray(X_token)
+        X_token = X_token[r]
+    else:
+        X_token = np.asarray(X_token)
 
     return X_vec, Y_vec, X_token
 
@@ -260,7 +265,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     total = 0
 
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, X_token = vectorize_data(data, with_error=True)  # xx shape:
+        X_vec, Y_vec, X_token = vectorize_data(data, with_error=True, shuffle=True)  # xx shape:
         X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
@@ -293,7 +298,7 @@ def val_model(val_loader, model, criterion, logger,epoch,writer ):
     to_print=np.empty((1,3))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, X_token = vectorize_data(data, with_error=False)  # xx shape:
+            X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
             X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
@@ -389,6 +394,24 @@ def main(args):
 
     return
 
+def load_and_test_model():
+    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_//20220628175920_models//ckpt_best_24.pth"
+    model = LSTMModel(input_dim=228, hidden_dim=256, layer_dim= 1, output_dim=2, device='cuda:0' )
+    model.load_state_dict(torch.load(PATH))
+    model.to(device)
+    #model.load_state_dict(['model_state_dict'])
+    data = [('eardh','minuster'),(1,1)]
+    #data = [('compare','contrast'),(1,1)]
+    model.eval()
+
+    X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
+    X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
+    Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+    outputs = model(X_vec)  # (n_words, 2)
+    _, predicted = torch.max(outputs.data, 1)
+    print(outputs.data)
+    print(predicted)
+
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -397,3 +420,4 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args)
+    #load_and_test_model()
