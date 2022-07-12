@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+torch.manual_seed(0)
+
 # Create an MLP network
 class MLPNetwork(nn.Module):
     def __init__(self, input_dim,output_dim):
