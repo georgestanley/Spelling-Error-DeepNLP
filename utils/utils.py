@@ -10,6 +10,7 @@ import torch
 alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
 all_letters = string.ascii_letters + " .,;'"
+np.random.seed(0)
 
 
 # def accuracy(output, target, topk=(1,)):
@@ -54,7 +55,7 @@ def get_rand123():
     '''
     Random choice of Error type to apply on selected string
     '''
-    return np.random.choice([1, 2, 3], p=[0.5, 0.5, 0])
+    return np.random.choice([1, 2, 3], p=[0.34, 0.33, 0.33])
 
 
 # def preapre_dataset():

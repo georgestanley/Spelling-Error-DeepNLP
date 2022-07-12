@@ -47,7 +47,7 @@ class RNN(nn.Module):
 
 class LSTMModelForOneHotEncodings(nn.Module):
     def __init__(self, input_dim, hidden_dim, layer_dim, output_dim, device):
-        super(LSTMModel, self).__init__()
+        super(LSTMModelForOneHotEncodings, self).__init__()
         self.hidden_dim = hidden_dim
 
         # Number of hidden layers

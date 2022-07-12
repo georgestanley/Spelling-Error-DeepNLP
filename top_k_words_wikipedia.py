@@ -13,7 +13,7 @@ def get_wikipedia_files(file_path, max_file_lines):
     i=0
     with open(file_path, encoding="utf-8") as infile:
         for i,line in enumerate(infile):
-            data.append(json.loads(line)['text'].lower().split())
+            data.append(json.loads(line)['text'].split())
             if i%10000==0:
                 print(f"Line {i} processed")
             if i == max_file_lines:
@@ -43,7 +43,9 @@ def count_words(data, k, max_file_lines):
     print("Stopwords Removed...")
     # most_occur = c.most_common()
     most_occur = remove_nonalpha_words(c)
-    x = json.dumps(dict(most_occur.most_common()), indent=4)
+    x= dict(most_occur.most_common())
+    x = {key:val for key,val in x.items() if val >20}
+    x = json.dumps(x, indent=4)
     #print(x)
     json_file = open("top_"+str(k)+"_words_over_"+str(max_file_lines)+".json","w")
     json_file.write(x)
@@ -105,7 +107,8 @@ def main ():
     max_file_lines = 200000
     k = "all"
     file_path_dev = "D:\Freiburg\MasterProject\datasets\wikipedia_2021-02-20\\development_documents.jsonl"
-    file_path_prod= "D:\\Freiburg\\MasterProject\\data\\training_20000_lines.jsonl"
+    file_path_prod= "D:\\Freiburg\\MasterProject\\data\\training_100000_lines.jsonl"
+    file_path_prod = "datasets\\wikipedia_2021-02-20\\training_documents.jsonl"
     file_path_dummy = "D:\\Freiburg\\MasterProject\\data\\3lines_training.jsonl"
     wikipedia_entries = get_wikipedia_files(file_path_prod , max_file_lines)
     count_words(wikipedia_entries,k, max_file_lines)

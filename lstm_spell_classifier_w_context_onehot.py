@@ -7,7 +7,7 @@ from torch import nn
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
-from Model import LSTMModel
+from Model import LSTMModelForOneHotEncodings
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
@@ -16,19 +16,19 @@ from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs
 from sklearn.metrics import f1_score
 from datetime import datetime
 
-import time
+
+
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
 n_iters = 100000
-print_every = 1000
-plot_every = 1000
-batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_# "
 alph_len = len(alph)
 
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
+torch.manual_seed(0)
+np.random.seed(0)
 
 # maxlen : dev10 : 66
 # maxlen : development_documents = 174
@@ -39,7 +39,7 @@ def parse_arguments():
     parser.add_argument('--data_folder', type=str, help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
-    parser.add_argument('--val_file', type=str , default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=32, help='batch_size')
@@ -167,13 +167,13 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-def initialize_model():
+def initialize_model(args, device):
     input_dim = len(alph)
     hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = args.hidden_layers
     output_dim = 2
 
-    model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
+    model = LSTMModelForOneHotEncodings(input_dim, hidden_dim, layer_dim, output_dim, device)
     model.to(device)
 
     learning_rate = args.lr
@@ -232,7 +232,7 @@ def one_hot_encode_data(new_dataset, labels):
     for n in range(len(new_dataset)):
         input_seq = ''
         new_dataset[n] = new_dataset[n][:maxlen]
-        arr_len.append(len(new_dataset[n])-1)
+        arr_len.append(len(new_dataset[n]) - 1)
         new_dataset[n] = new_dataset[n].ljust(maxlen, '*')
         # for i in range(len(new_dataset)):
         xx = [alph.index(character) for character in new_dataset[n]]
@@ -243,7 +243,7 @@ def one_hot_encode_data(new_dataset, labels):
     new_dataset = torch.nn.functional.one_hot(new_dataset.to(torch.int64), num_classes=77)
     labels = torch.from_numpy(np.array(labels))
 
-    #shuffle the batch
+    # shuffle the batch
     r = torch.randperm(new_dataset.size()[0])
     new_dataset = new_dataset[r]
     labels = labels[r]
@@ -263,7 +263,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
         X_vec = X_vec.type(torch.FloatTensor).to(device)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
-        outputs = model(X_vec,sentence_length)  # (n_words, 2)#
+        outputs = model(X_vec, sentence_length)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
         ssg, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()
@@ -299,8 +299,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     # model.eval()
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            #data = next(iter(val_loader))
-            X_vec, Y_vec , sentence_length = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
+            # data = next(iter(val_loader))
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
 
@@ -329,8 +329,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         mean_val_accuracy = 100 * correct / total
         scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
         print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
-          f"total_samples={total}")
-    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+              f"total_samples={total}")
+        save_in_log(writer, epoch, scalar_dict=scalar_dict)
     # accuracy = 100 * correct / total
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     return mean_val_loss, mean_val_accuracy.cpu(), f1
@@ -350,7 +350,7 @@ def main(args):
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data,val_data)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
     model, criterion, optim = initialize_model()
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
@@ -389,6 +389,67 @@ def main(args):
     return
 
 
+def eval_model(val_loader, model, criterion):
+    correct = 0
+
+    f1 = 0
+
+    total_loss = 0
+    total = 0
+    with torch.no_grad():
+        for i, data in enumerate(val_loader):
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
+            X_vec = X_vec.type(torch.FloatTensor).to(device)
+            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+            outputs = model(X_vec, sentence_length)  # (n_words, 2)
+
+            _, predicted = torch.max(outputs.data, 1)
+            total += Y_vec.size(0)
+            loss = criterion(outputs, Y_vec)
+            correct += (predicted == Y_vec).sum()
+
+            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            c = collections.Counter(predicted.cpu().detach().numpy())
+            print(c)
+            batch_size = Y_vec.size(0)
+            total_loss += loss.item()
+
+            # temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            # to_print = np.row_stack((to_print, temp_to_print))
+
+        # to_print = pd.DataFrame(to_print)
+        # to_print.to_csv('data2.csv')
+        # mean_val_loss = total_loss / total
+        alpha = (len(val_loader.dataset)) / batch_size
+        mean_val_loss = total_loss / alpha
+        mean_val_accuracy = 100 * correct / total
+        print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+              f"total_samples={total}")
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
+
+
+def evaluate():
+    path = ""
+    PATH = "results//lstm_context_onehot//lr0.001_bs32_optimAdam_hidden_dim512_hidden_layers2_//20220705230341_models//ckpt_best_22.pth"
+    model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
+    model.load_state_dict(torch.load(PATH))
+    model.to(device)
+    model.eval()
+
+    val_data = get_wikipedia_text(os.path.join(args.data_folder, 'val_25_for_dev_500.jsonl'))
+    val_data = cleanup_data(val_data)
+    val_data = generate_N_grams(val_data)
+
+    _, val_loader = convert_to_pytorch_dataset(val_data, val_data)
+    model, criterion, optim = initialize_model(args, device)
+    print("Dataset size: {} samples".format(len(val_loader.dataset)))  # TODO
+
+    val_loss, val_acc, val_f1 = eval_model(val_loader, model, criterion)
+
+    print(f"Val Loss :{val_loss}, val_acc: {val_acc}, val_f1 :{val_f1}")
+    return
+
+
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
@@ -397,5 +458,6 @@ if __name__ == "__main__":
     print("LSTM Spelling Classifier with context -- One-Hot")
     print(vars(args))
     print()
-    main(args)
+    #main(args)
+    evaluate()
     print(datetime.now() - start)

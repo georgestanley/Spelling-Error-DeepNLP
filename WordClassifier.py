@@ -14,6 +14,7 @@
 #observations:
 #the network starts outputing 0 towards later stages.
 import random
+import string
 
 import numpy
 

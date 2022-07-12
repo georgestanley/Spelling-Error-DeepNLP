@@ -10,7 +10,7 @@ import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
@@ -23,6 +23,9 @@ alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/
 alph_len = len(alph)
 
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
+
+torch.manual_seed(0)
+np.random.seed(0)
 
 
 def parse_arguments():
@@ -235,6 +238,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+
             c = collections.Counter(predicted.cpu().detach().numpy())
             print(c)
             batch_size = Y_vec.size(0)
@@ -475,6 +479,7 @@ def main(args, device):
     return
 
 
+
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
@@ -484,4 +489,5 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args, device)
+    eval_model()
     print(datetime.now() - start)

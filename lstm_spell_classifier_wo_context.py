@@ -10,9 +10,9 @@ from Model import MLPNetwork, RNN, LSTMModel
 import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log
+from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs
 # import wandb
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
 
 all_letters = string.ascii_letters + " .,;'"
@@ -24,29 +24,36 @@ batchsize = 100
 alph = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;'*!?`$%&(){}[]-/\@_#"
 exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
+torch.manual_seed(0)
+np.random.seed(0)
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
-    parser.add_argument('--output-root', type=str, default='results')
-    parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-    parser.add_argument('--bs', type=int, default=1024, help='batch_size')
+    parser.add_argument('--output_root', type=str, default='results')
+    parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
+    parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
+    parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
-    hparam_keys = ["lr", "bs", "optim"]  # changed from loss to size
+    hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_noncontext', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_context', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "{}_models".format(exp_id)))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
-
     return args
 
+ 
 
 def insert_errors(data):  #
     '''
@@ -75,8 +82,11 @@ def insert_errors(data):  #
                 rep_pos = np.random.randint(low=0, high=len(yy))
                 temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
         elif switch_val == 3:
-            # type 3
-            pass
+            # Type 3: Add a character
+            yy = np.array2string(x).replace("'", "")
+            rep_char = int2char(np.random.randint(0, 26))
+            rep_pos = np.random.randint(low=0, high=len(yy))
+            temp.append(yy[0:rep_pos] + rep_char + yy[rep_pos:])
 
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
@@ -290,7 +300,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     return mean_train_loss, mean_train_accuracy
 
 
-def val_model(val_loader, model, criterion, logger,epoch,writer ):
+def val_model(val_loader, model, criterion, logger,writer,epoch ):
     correct = 0
     f1 = 0
     total_loss = 0
@@ -311,6 +321,15 @@ def val_model(val_loader, model, criterion, logger,epoch,writer ):
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            cm = confusion_matrix(predicted.cpu(), Y_vec.cpu())
+
+            #TODO
+            FP = cm.sum(axis=0) - np.diag(cm)
+            FN = cm.sum(axis=1) - np.diag(cm)
+            TP = np.diag(cm)
+            TN = cm.sum() - (FP + FN + TP)
+
+
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
             temp_to_print = np.column_stack((X_token,Y_vec.cpu(),predicted.cpu()))
@@ -321,26 +340,30 @@ def val_model(val_loader, model, criterion, logger,epoch,writer ):
     alpha = (len(val_loader.dataset)) / batch_size
     mean_val_loss = total_loss / alpha
     mean_val_accuracy = 100 * correct / total
-    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1':f1}
     print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
           f"total_samples={total}")
-    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 def main(args):
     writer = SummaryWriter()
-    args.hidden_dim = 256
     logger = get_logger(args.output_folder, args.exp_name)
-    logger.info("Error 1 and 2")
+    logger.info("Error 1,2,3")
 
-    train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_all_words_over_200000.json"))
+    #train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_all_words_over_100000.json"))
+    train_data = get_wikipedia_words(os.path.join(args.data_folder, args.input_file))
     train_data = convert_to_numpy(train_data)
 
-    val_data = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
+    val_data2 = get_wikipedia_words(os.path.join(args.data_folder,"val_set_with_error.json"))
+    val_data2 = convert_to_numpy_valdata(val_data2)
+
+    val_data = get_wikipedia_words(os.path.join(args.data_folder,args.val_file))
+                                                #"bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
 
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
-    model, criterion, optim = initialize_model(n_hidden_layers=1)
+    model, criterion, optim = initialize_model(n_hidden_layers=args.hidden_layers)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
@@ -349,7 +372,7 @@ def main(args):
     logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
 
-    n_epoch = 30
+    n_epoch = args.epochs
 
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
@@ -372,26 +395,7 @@ def main(args):
         val_accuracies.append(val_acc)
         val_f1s.append(val_f1)
 
-    plt.plot(np.arange(n_epoch + 1), train_losses)
-    plt.title('Train Loss')
-    plt.savefig(fname=os.path.join(args.model_folder, "plot_train_loss.png"))
-    plt.show()
-
-    plt.plot(np.arange(n_epoch + 1), val_losses)
-    plt.title('Val Loss')
-    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_loss.png"))
-    plt.show()
-
-    plt.plot(np.arange(n_epoch + 1), val_accuracies)
-    plt.title('Val Acc')
-    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_acc.png"))
-    plt.show()
-
-    plt.plot(np.arange(n_epoch + 1), val_f1s)
-    plt.title('Val F1')
-    plt.savefig(fname=os.path.join(args.model_folder, "plot_val_f1.png"))
-    plt.show()
-
+    plot_graphs(n_epoch, args.model_folder, logger, train_losses, val_losses, val_accuracies, val_f1s)
     return
 
 def load_and_test_model():
