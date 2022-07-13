@@ -10,7 +10,7 @@ from Model import MLPNetwork, RNN, LSTMModel
 import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs
+from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs, f1_score_manual
 # import wandb
 from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
@@ -48,12 +48,11 @@ def parse_arguments():
 
     args.exp_name += "_{}".format(args.exp_suffix)
 
-    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_context', args.exp_name))
+    args.output_folder = check_dir(os.path.join(args.output_root, 'lstm_noncontext', args.exp_name))
     args.model_folder = check_dir(os.path.join(args.output_folder, "{}_models".format(exp_id)))
     args.logs_folder = check_dir(os.path.join(args.output_folder, "logs"))
     return args
 
- 
 
 def insert_errors(data):  #
     '''
@@ -110,7 +109,7 @@ def binarize(token, label, alph):
     return torch.tensor(bin_all), torch.tensor(int(float(label))), token
 
 
-def vectorize_data(data_arr,with_error, shuffle):
+def vectorize_data(data_arr, with_error, shuffle):
     # https://arxiv.org/pdf/1608.02214.pdf
     '''
 
@@ -263,7 +262,7 @@ def initialize_model(n_hidden_layers):
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    #criterion = nn.BCEWithLogitsLoss()
+    # criterion = nn.BCEWithLogitsLoss()
 
     return model, criterion, optimizer
 
@@ -300,12 +299,13 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     return mean_train_loss, mean_train_accuracy
 
 
-def val_model(val_loader, model, criterion, logger,writer,epoch ):
+def val_model(val_loader, model, criterion, logger, writer, epoch):
     correct = 0
     f1 = 0
     total_loss = 0
     total = 0
-    to_print=np.empty((1,3))
+    TN, FP, FN, TP = 0, 0, 0, 0
+    to_print = np.empty((1, 3))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
@@ -320,46 +320,45 @@ def val_model(val_loader, model, criterion, logger,writer,epoch ):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-            cm = confusion_matrix(predicted.cpu(), Y_vec.cpu())
-
-            #TODO
-            FP = cm.sum(axis=0) - np.diag(cm)
-            FN = cm.sum(axis=1) - np.diag(cm)
-            TP = np.diag(cm)
-            TN = cm.sum() - (FP + FN + TP)
-
+            #f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
 
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
-            temp_to_print = np.column_stack((X_token,Y_vec.cpu(),predicted.cpu()))
-            to_print = np.row_stack((to_print,temp_to_print))
+            temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            to_print = np.row_stack((to_print, temp_to_print))
 
     to_print = pd.DataFrame(to_print)
-    to_print.to_csv('data2.csv')
+    to_print.to_csv(os.path.join(args.output_folder,'data2.csv'))
     alpha = (len(val_loader.dataset)) / batch_size
     mean_val_loss = total_loss / alpha
     mean_val_accuracy = 100 * correct / total
-    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1':f1}
-    print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+    f1 = f1_score_manual(TN, FP, FN, TP)
+    scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
+    logger.info(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
           f"total_samples={total}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_val_loss, mean_val_accuracy.cpu(), f1
+
 
 def main(args):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
     logger.info("Error 1,2,3")
 
-    #train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_all_words_over_100000.json"))
+    # train_data = get_wikipedia_words(os.path.join(args.data_folder, "top_all_words_over_100000.json"))
     train_data = get_wikipedia_words(os.path.join(args.data_folder, args.input_file))
     train_data = convert_to_numpy(train_data)
 
-    val_data2 = get_wikipedia_words(os.path.join(args.data_folder,"val_set_with_error.json"))
+    val_data2 = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
     val_data2 = convert_to_numpy_valdata(val_data2)
 
-    val_data = get_wikipedia_words(os.path.join(args.data_folder,args.val_file))
-                                                #"bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
+    val_data = get_wikipedia_words(os.path.join(args.data_folder, args.val_file))
+    # "bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
 
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
@@ -385,7 +384,6 @@ def main(args):
         logger.info('Validation accuracy: {}'.format(val_acc))
         logger.info('Validation F1: {}'.format(val_f1))
 
-
         if val_f1 > max(val_f1s) or val_acc > max(val_accuracies):
             torch.save(model.state_dict(), os.path.join(args.model_folder, "ckpt_best_{}.pth".format(epoch)))
             logger.info('Model Saved')
@@ -398,14 +396,15 @@ def main(args):
     plot_graphs(n_epoch, args.model_folder, logger, train_losses, val_losses, val_accuracies, val_f1s)
     return
 
+
 def load_and_test_model():
     PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_//20220628175920_models//ckpt_best_24.pth"
-    model = LSTMModel(input_dim=228, hidden_dim=256, layer_dim= 1, output_dim=2, device='cuda:0' )
+    model = LSTMModel(input_dim=228, hidden_dim=256, layer_dim=1, output_dim=2, device='cuda:0')
     model.load_state_dict(torch.load(PATH))
     model.to(device)
-    #model.load_state_dict(['model_state_dict'])
-    data = [('eardh','minuster'),(1,1)]
-    #data = [('compare','contrast'),(1,1)]
+    # model.load_state_dict(['model_state_dict'])
+    data = [('eardh', 'minuster'), (1, 1)]
+    # data = [('compare','contrast'),(1,1)]
     model.eval()
 
     X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
@@ -424,4 +423,4 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args)
-    #load_and_test_model()
+    # load_and_test_model()

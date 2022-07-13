@@ -230,3 +230,12 @@ def plot_graphs(n_epoch, model_folder, logger, train_losses, val_losses, val_acc
     plt.title('Val F1')
     plt.ioff()
     plt.savefig(fname=os.path.join(model_folder, "plot_val_f1.png"))
+
+
+def f1_score_manual(tn,fp,fn,tp):
+
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1_score = 2 * ((precision * recall)/(precision + recall))
+    return f1_score
+
