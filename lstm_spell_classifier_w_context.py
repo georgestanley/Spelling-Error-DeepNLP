@@ -9,7 +9,8 @@ from Model import LSTMModel
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123
+from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
+    f1_score_manual
 from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
@@ -219,6 +220,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
+    TN, FP, FN, TP = 0, 0, 0, 0
     # model.eval()
     to_print = np.empty((1, 7))
     with torch.no_grad():
@@ -238,6 +240,11 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
 
             c = collections.Counter(predicted.cpu().detach().numpy())
             print(c)
@@ -255,8 +262,9 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         # alpha = 1000 / batch_size
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
+        f1 = f1_score_manual(TN, FP, FN, TP)
         scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1':f1}
-        print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+        logger.info(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
               f"total_samples={total}")
     # accuracy = 100 * correct / total
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
@@ -386,7 +394,6 @@ def vectorize_data2(data_arr):
     return X_vec, Y_vec, X_token
 
 
-# @timeit
 def insert_errors(data):  #
     '''
 
@@ -433,9 +440,12 @@ def main(args, device):
     train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
+
     val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
     val_data = cleanup_data(val_data)
     val_data = generate_N_grams(val_data)
+
+
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
@@ -479,7 +489,6 @@ def main(args, device):
     return
 
 
-
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
@@ -489,5 +498,5 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args, device)
-    eval_model()
+    #eval_model()
     print(datetime.now() - start)

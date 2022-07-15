@@ -11,13 +11,11 @@ from Model import LSTMModelForOneHotEncodings
 import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123
+from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
+    f1_score_manual
 # import wandb
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
-
-
-
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -29,6 +27,7 @@ exp_id = datetime.now().strftime('%Y%m%d%H%M%S')
 
 torch.manual_seed(0)
 np.random.seed(0)
+
 
 # maxlen : dev10 : 66
 # maxlen : development_documents = 174
@@ -64,16 +63,42 @@ def parse_arguments():
 
 def get_wikipedia_text(file_name):
     '''
-    Returns a pandas Dataframe containing the extracted texts.
-    :param file_name:
-    :return:
+
     '''
     data = []
     with open(file_name, encoding="utf-8") as f:
         for i, line in enumerate(f):
-            data.append(json.loads(line)['text'].lower())
+            data.append(json.loads(line)['text'])
         data = np.array(data)
     return data
+
+
+def get_bea60_data(file_name):
+    """
+    Used Only for VAL and TEST purpose.
+    Returns a dict of in sentence:label format
+    """
+    data = []
+    with open(file_name, encoding="utf-8") as f:
+        x = f.read()
+        data = json.loads(x)
+        # data = np.array(x)
+    return data
+
+
+def convert_to_numpy_valdata(words):
+    non_ascii_keys = []
+    for x in words.keys():
+        if x.isascii() != True:
+            non_ascii_keys.append(x)
+    for x in non_ascii_keys:
+        del words[x]
+
+    x1 = np.array(list(words.keys()))
+    # x2 = np.zeros(x1.size)
+    x2 = np.array(list(words.values()))
+    x = np.column_stack((x1, x2))
+    return (x1, x2)
 
 
 # @timeit
@@ -89,11 +114,9 @@ def remove_punctuation(texts):
     return new
 
 
-# @timeit
 def cleanup_data(data):
     """
-    :param: data :Pandas dataframe [1 column]
-    :returns data : Pandas Dataframe [1 column]
+    Removes punctuations
     """
     # data['text'] = data['text'].apply(lambda x: remove_punctuation(x))
     f = lambda x: remove_punctuation(x)
@@ -103,7 +126,7 @@ def cleanup_data(data):
 
 def generate_N_grams(data, ngram=5):
     """
-    Takes and input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
+    Takes as input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
     # label meanings:
     # 0: no error in middle word
     # 1: With error in middle word
@@ -135,6 +158,20 @@ def generate_N_grams(data, ngram=5):
     # new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
 
     return new_dataset, labels  # new_dataset:
+
+
+def generate_N_grams_valdata(data):
+    sentences = data[0]
+    labels = data[1]
+    new_dataset = []
+    label_dataset = []
+    for n, sentence in enumerate(sentences):
+        new_dataset.append(sentence)
+        label_dataset.append(labels[n])
+    new_dataset = np.array(new_dataset)
+    labels = np.array(label_dataset)
+
+    return new_dataset, labels
 
 
 def convert_to_pytorch_dataset(train_data, val_data):
@@ -201,12 +238,11 @@ def insert_errors(data):  #
                 x = x.replace("'", "")
                 x = x.split()
                 yy = x[2]
-                # yy = np.array2string(x).replace("'", "")
                 rep_char = int2char(np.random.randint(0, 26))
                 rep_pos = np.random.randint(low=0, high=len(yy))
                 false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
                 x[2] = false_word
-                temp.append(' '.join(x))  # [i][2] = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                temp.append(' '.join(x))
         elif switch_val == 2:
             if get_rand01() == 1 and len(x) > 1:
                 # Type 2: delete a character
@@ -217,7 +253,17 @@ def insert_errors(data):  #
                 x[2] = false_word
                 temp.append(' '.join(x))
         elif switch_val == 3:
-            pass
+            if get_rand01() == 1:
+                # Type 3: Add a character
+                x = x.replace("'", "")
+                x = x.split()
+                yy = x[2]
+                rep_char = int2char(np.random.randint(0, 26))
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                false_word = yy[0:rep_pos] + rep_char + yy[rep_pos:]
+                x[2] = false_word
+                temp.append(' '.join(x))
+
     label_true = [0] * len(data)
     label_false = [1] * len(temp)
     labels = label_true + label_false
@@ -296,6 +342,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     total_loss = 0
     total_accuracy = 0
     total = 0
+    TN, FP, FN, TP = 0, 0, 0, 0
     # model.eval()
     with torch.no_grad():
         for i, data in enumerate(val_loader):
@@ -312,6 +359,13 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
+
             c = collections.Counter(predicted.cpu().detach().numpy())
             print(c)
             batch_size = Y_vec.size(0)
@@ -327,9 +381,11 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         # alpha = 1000 / batch_size
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
-        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy}
-        print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
-              f"total_samples={total}")
+        f1 = f1_score_manual(TN, FP, FN, TP)
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
+        logger.info(
+            f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+            f"total_samples={total}")
         save_in_log(writer, epoch, scalar_dict=scalar_dict)
     # accuracy = 100 * correct / total
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
@@ -342,16 +398,22 @@ def main(args):
     train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
-    val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
-    val_data = cleanup_data(val_data)
-    val_data = generate_N_grams(val_data)
+    # val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
+    # val_data = cleanup_data(val_data)
+    # val_data = generate_N_grams(val_data)
+
+    val_data = get_bea60_data(os.path.join(args.data_folder, args.val_file))
+    # "bea60k.repaired.val//bea60_sentences_val_truth_and_false.json"))
+    val_data = convert_to_numpy_valdata(val_data)
+    # val_data = cleanup_data(val_data)
+    val_data = generate_N_grams_valdata(val_data)
     # data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
     # data = convert_to_numpy(data)
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
-    model, criterion, optim = initialize_model()
+    model, criterion, optim = initialize_model(args, device)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
@@ -458,6 +520,6 @@ if __name__ == "__main__":
     print("LSTM Spelling Classifier with context -- One-Hot")
     print(vars(args))
     print()
-    #main(args)
-    evaluate()
+    main(args)
+    # evaluate()
     print(datetime.now() - start)
