@@ -64,7 +64,7 @@ def get_wikipedia_text(file_name):
     data = []
     with open(file_name, encoding="utf-8") as f:
         for i, line in enumerate(f):
-            data.append(json.loads(line)['text'].lower())  ##TODO : Check if lower needed
+            data.append(json.loads(line)["text"].lower())  ##TODO : Check if lower needed
         data = np.array(data)
     return data
 
@@ -88,7 +88,6 @@ def cleanup_data(data):
     return data
 
 
-# @timeit
 def generate_N_grams(data, ngram=5):
     """
     Takes and input a np arrary of texts.
@@ -120,6 +119,49 @@ def generate_N_grams(data, ngram=5):
     labels = [0] * len(new_dataset)
     return new_dataset, labels  # new_dataset: ndarray(13499,1,5) ; labels : ndarray(13499)
 
+
+def get_bea60_data(file_name):
+    """
+    Used Only for VAL and TEST purpose.
+    Returns a dict of in sentence:label format
+    """
+    data = []
+    with open(file_name, encoding="utf-8") as f:
+        x = f.read()
+        data = json.loads(x)
+
+    #data = np.array(data)
+    return data
+
+
+def convert_to_numpy_valdata(words):
+    non_ascii_keys = []
+    for x in words.keys():
+        if x.isascii() != True:
+            non_ascii_keys.append(x)
+    for x in non_ascii_keys:
+        del words[x]
+
+    x1 = np.array(list(words.keys()))
+    # x2 = np.zeros(x1.size)
+    x2 = np.array(list(words.values()))
+    x = np.column_stack((x1, x2))
+    return (x1, x2)
+
+def generate_N_grams_valdata(data):
+    sentences = data[0]
+    labels = data[1]
+    new_dataset = []
+    label_dataset = []
+    for n, sentence in enumerate(sentences):
+
+        new_dataset.append(sentence.split())
+        label_dataset.append(labels[n])
+    new_dataset = np.array(new_dataset)
+    labels = np.array(label_dataset)
+
+
+    return new_dataset, labels
 
 class MyDataset(torch.utils.data.Dataset):
 
@@ -153,7 +195,7 @@ def convert_to_pytorch_dataset(train_data, val_data, args):
                                   )
 
     val_dataset = MyDataset(val_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True, collate_fn=collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=10, shuffle=True, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
@@ -175,14 +217,14 @@ def initialize_model(args, device):
     return model, criterion, optimizer
 
 
-def train_model(train_loader, model, criterion, optim, writer, epoch):
+def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
     total_loss = 0
     total_accuracy = 0
     total = 0
     correct = 0
     # model.train()
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, X_token = vectorize_data2(data)
+        X_vec, Y_vec, X_token = vectorize_data2(data, with_error=True)
         X_vec = X_vec.to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
@@ -205,7 +247,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch):
     mean_train_loss = total_loss / alpha
     mean_train_accuracy = 100 * correct / total
     scalar_dict = {'Loss/train': mean_train_loss, 'Accuracy/train': mean_train_accuracy}
-    print(f"mean_train_loss:{mean_train_loss} mean_train_acc;{mean_train_accuracy}")
+    logger.info(f"mean_train_loss:{mean_train_loss} mean_train_acc;{mean_train_accuracy}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_train_loss, mean_train_accuracy
@@ -225,7 +267,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     to_print = np.empty((1, 7))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, X_token = vectorize_data2(data)  # xx shape:
+            X_vec, Y_vec, X_token = vectorize_data2(data, with_error=False)  # xx shape:
             X_vec = X_vec.to(device)
             # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
@@ -357,13 +399,14 @@ def binarize2(tokens, isLabelVector=False):
     return torch.tensor(bin)
 
 
-def vectorize_data2(data_arr):
+def vectorize_data2(data_arr, with_error ):
     '''
     Uses np broadcasting instead of earlier technique
     :param data_arr: ndarray (batch_len,6) ; e.g. [[['big' 'brother' 'ninetepn' 'eightyfour' 'big' '0']]]
     '''
     data_arr = np.column_stack((data_arr[0], data_arr[1]))
-    data_arr = insert_errors(data_arr)
+    if with_error:
+        data_arr = insert_errors(data_arr)
     # X_vec = torch.zeros((int(len(data_arr) / batchsize), batchsize, len(alph) * 3))
     X_vec = torch.zeros((len(data_arr), 5, len(alph) * 3))  # (batch_len * 5 * 228 )
     Y_vec = torch.zeros((len(data_arr), 1))
@@ -426,7 +469,16 @@ def insert_errors(data):  #
                 false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
                 temp.append(false_str)
         elif switch_val == 3:
-            pass
+            if get_rand01() == 1 and len(x) > 1:
+                #Type 3: add an extra character
+                yy = np.array2string(x).replace("'", "")
+                rep_char = int2char(np.random.randint(0, 26))
+                rep_pos = np.random.randint(low=0, high=len(yy))
+                # false_word = yy[0:rep_pos] + rep_char + yy[rep_pos + 1:]
+                false_str = data[i][:-1].copy()
+                false_str[2] = yy[0:rep_pos] + rep_char + yy[rep_pos:]
+                temp.append(false_str)
+
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
     data = np.concatenate((data, x))
@@ -441,9 +493,14 @@ def main(args, device):
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
 
-    val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
-    val_data = cleanup_data(val_data)
-    val_data = generate_N_grams(val_data)
+    #val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
+    #val_data = cleanup_data(val_data)
+    #val_data = generate_N_grams(val_data)
+
+    val_data = get_bea60_data(os.path.join(args.data_folder, args.val_file))
+    # "bea60k.repaired.val//bea60_sentences_val_truth_and_false.json"))
+    val_data = convert_to_numpy_valdata(val_data)
+    val_data = generate_N_grams_valdata(val_data)
 
 
     # dataz = np.load('data\\5_gram_dataset.npz')
@@ -455,7 +512,7 @@ def main(args, device):
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
-    print("Dataset size: {} samples".format(len(train_loader.dataset)))  # TODO
+    logger.info("Dataset size: {} samples".format(len(train_loader.dataset)))  # TODO
     logger.info(expdata)
     logger.info('train_data {}'.format(train_loader.dataset.__len__()))  # TODO
     logger.info('val_data {}'.format(val_loader.dataset.__len__()))  # TODO
@@ -466,7 +523,7 @@ def main(args, device):
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
-        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch)
+        #train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch,logger)
         val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')

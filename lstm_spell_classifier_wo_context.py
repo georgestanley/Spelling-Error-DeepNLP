@@ -354,8 +354,8 @@ def main(args):
     train_data = get_wikipedia_words(os.path.join(args.data_folder, args.input_file))
     train_data = convert_to_numpy(train_data)
 
-    val_data2 = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
-    val_data2 = convert_to_numpy_valdata(val_data2)
+    #val_data2 = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
+    #val_data2 = convert_to_numpy_valdata(val_data2)
 
     val_data = get_wikipedia_words(os.path.join(args.data_folder, args.val_file))
     # "bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
