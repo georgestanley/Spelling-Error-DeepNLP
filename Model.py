@@ -65,6 +65,8 @@ class LSTMModelForOneHotEncodings(nn.Module):
     def forward(self, x, sequence_lengths):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
+        self.lstm.flatten_parameters()  # https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506#
+
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)
 
         # Initialize cell state
@@ -79,7 +81,14 @@ class LSTMModelForOneHotEncodings(nn.Module):
         # out.size() --> 100, 28, 100
         # out[:, -1, :] --> 100, 100 --> just want last time step hidden states!
         #print(sequence_lengths)
-        out = torch.stack([out[i, length] for i, length in enumerate(sequence_lengths)])  # sequence_lengths is an array containing the length of each sequence without padding
+        #print(out.shape, len(sequence_lengths))
+        #l=[]
+        #for i, length in enumerate(sequence_lengths):
+            #print(i,length)
+            #l.append(out[i,length])
+        #    pass
+        #torch.stack(l)
+        out = torch.stack([out[i, length] for i, length in enumerate(sequence_lengths)]).to(self.device) # sequence_lengths is an array containing the length of each sequence without padding
         out = self.fc(out)
 
         #out = self.fc(out[:, -1, :])
@@ -107,6 +116,8 @@ class LSTMModel(nn.Module):
     def forward(self, x):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
+        self.lstm.flatten_parameters() #https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506
+
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)
 
         # Initialize cell state

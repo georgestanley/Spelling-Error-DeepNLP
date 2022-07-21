@@ -155,10 +155,10 @@ def generate_N_grams_valdata(data):
     label_dataset = []
     for n, sentence in enumerate(sentences):
 
-        new_dataset.append(sentence.split())
+        new_dataset.append([sentence.split()])
         label_dataset.append(labels[n])
-    new_dataset = np.array(new_dataset)
-    labels = np.array(label_dataset)
+    #new_dataset = np.array(new_dataset)
+    #labels = np.array(label_dataset)
 
 
     return new_dataset, labels
@@ -195,7 +195,7 @@ def convert_to_pytorch_dataset(train_data, val_data, args):
                                   )
 
     val_dataset = MyDataset(val_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=10, shuffle=True, collate_fn=collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
@@ -207,7 +207,9 @@ def initialize_model(args, device):
     output_dim = 2
 
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
+    model = nn.DataParallel(model)
     model = model.to(device)
+
 
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -282,6 +284,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             correct += (predicted == Y_vec).sum()
 
             f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            x = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
             tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
             TN += tn
             FP += fp
@@ -523,7 +526,7 @@ def main(args, device):
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
-        #train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch,logger)
+        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch,logger)
         val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')
@@ -549,8 +552,8 @@ def main(args, device):
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print(f"running on {device}")
+    device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
+    #print(f"running on {device}")
     print("LSTM Spelling Classifier with Context")
     print(vars(args))
     print()

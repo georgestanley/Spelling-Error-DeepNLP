@@ -179,7 +179,7 @@ def generate_N_grams_valdata(data):
 def convert_to_pytorch_dataset(train_data, val_data):
     train_dataset = MyDataset(train_data)
     train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False,
-                                  num_workers=1, pin_memory=True
+                                  #num_workers=0, pin_memory=True
                                   )
 
     val_dataset = MyDataset(val_data)
@@ -213,6 +213,7 @@ def initialize_model(args, device):
     output_dim = 2
 
     model = LSTMModelForOneHotEncodings(input_dim, hidden_dim, layer_dim, output_dim, device)
+    model = nn.DataParallel(model)
     model.to(device)
 
     learning_rate = args.lr
@@ -269,7 +270,7 @@ def insert_errors(data):  #
     label_true = [0] * len(data)
     label_false = [1] * len(temp)
     labels = label_true + label_false
-    data = data + temp
+    data = list(data) + temp
     return data, labels
 
 
@@ -310,13 +311,18 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
     # model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=False,labels=data[1], shuffle=True)
+        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=True,labels=data[1], shuffle=True)
         X_vec = X_vec.type(torch.FloatTensor).to(device)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
-        outputs = model(X_vec, sentence_length)  # (n_words, 2)#
+        #print("X_vec shape before:",X_vec.shape)
+        sent_len = torch.tensor(sentence_length, device=device)
+        #print("X_vec shape after:",X_vec.shape)
+
+
+        outputs = model(X_vec, sent_len)  # (n_words, 2)#
         loss = criterion(outputs, Y_vec)
-        ssg, predicted = torch.max(outputs.data, 1)
+        _, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()
         # c = collections.Counter(predicted.cpu().detach().numpy())
         # print("Input Distribution",c)
@@ -356,8 +362,9 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+            sent_len = torch.tensor(sentence_length, device=device)
 
-            outputs = model(X_vec, sentence_length)  # (n_words, 2)
+            outputs = model(X_vec, sent_len)  # (n_words, 2)
             # Get predictions from the maximum value
             _, predicted = torch.max(outputs.data, 1)
             total += Y_vec.size(0)
@@ -373,7 +380,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             TP += tp
 
             c = collections.Counter(predicted.cpu().detach().numpy())
-            logger.info(c)
+            #logger.info(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 
@@ -521,8 +528,8 @@ def evaluate():
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
-    device = torch.device('cuda:'+str(args.gpu_id) if torch.cuda.is_available() else 'cpu')
-    print(f"running on {device}")
+    device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
+    #print(f"running on {device}")
     print("LSTM Spelling Classifier with context -- One-Hot")
     print(vars(args))
     print()
