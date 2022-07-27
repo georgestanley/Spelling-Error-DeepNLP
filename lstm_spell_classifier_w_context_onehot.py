@@ -423,12 +423,7 @@ def main(args):
     # "bea60k.repaired.val//bea60_sentences_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
     # val_data = cleanup_data(val_data)
-    val_data = generate_N_grams_valdata(val_data)
-    # data = one_hot_encode_data(new_dataset = data[0], labels = data[1])
-    # data = convert_to_numpy(data)
-    # dataz = np.load('data\\5_gram_dataset.npz')
-    # dataz = np.load(os.path.join(args.data_folder, args.input_file))
-    # data = (dataz['arr_0'], dataz['arr_1'])
+    val_data = generate_N_grams_valdata(val_data),
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
     model, criterion, optim = initialize_model(args, device)
 

@@ -1,13 +1,8 @@
 import unittest
 from unittest import TestCase
-import sys
-import pandas as pd
 import numpy as np
-# import pandas.testing as pd_testing
-import torch.utils.data
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+import torch
 
-import Model
 from lstm_spell_classifier_w_context import remove_punctuation, cleanup_data, generate_N_grams, \
     convert_to_pytorch_dataset, get_wikipedia_text, collate_fn, parse_arguments, initialize_model, binarize2, \
     get_bea60_data, convert_to_numpy_valdata, generate_N_grams_valdata, \
