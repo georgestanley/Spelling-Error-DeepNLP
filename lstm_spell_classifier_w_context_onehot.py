@@ -63,14 +63,18 @@ def parse_arguments():
     return args
 
 
-def get_wikipedia_text(file_name):
+def get_wikipedia_text(file_name, lower_case):
     '''
 
     '''
     data = []
     with open(file_name, encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            data.append(json.loads(line)['text'])
+        if lower_case:
+            for i, line in enumerate(f):
+                data.append(json.loads(line)['text'].lower())
+        else:
+            for i, line in enumerate(f):
+                data.append(json.loads(line)['text'])
         data = np.array(data)
     return data
 

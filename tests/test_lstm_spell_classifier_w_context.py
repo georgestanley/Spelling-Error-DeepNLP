@@ -9,23 +9,33 @@ from torch.utils.data import TensorDataset, DataLoader, Dataset
 
 import Model
 from lstm_spell_classifier_w_context import remove_punctuation, cleanup_data, generate_N_grams, \
-    convert_to_pytorch_dataset, get_wikipedia_text, collate_fn, parse_arguments, initialize_model, binarize2
+    convert_to_pytorch_dataset, get_wikipedia_text, collate_fn, parse_arguments, initialize_model, binarize2, \
+    get_bea60_data, convert_to_numpy_valdata, generate_N_grams_valdata, \
+    train_model, val_model, insert_errors, vectorize_data2
+
+torch.manual_seed(0)
+np.random.seed(0)
 
 
 class Test_lstm_w_context(TestCase):
 
     def test_get_wikipedia_text(self):
-        test_array = np.array('big brother is a fictional character')
-        np.testing.assert_array_equal(get_wikipedia_text('test_file.jsonl'), test_array)
+        test_array = np.array(['Big Brother is a fictional character from the world of television hsitory and has been '
+                               'there for ages. it needs to be seen how long it goes !',
+                               'Freiburg is a city situated in the black-forest region of Germany.'])
+        np.testing.assert_array_equal(get_wikipedia_text('test_file.jsonl', lower_case=False), test_array)
+        test_array = np.array(['big brother is a fictional character from the world of television hsitory and has been '
+                               'there for ages. it needs to be seen how long it goes !',
+                               'freiburg is a city situated in the black-forest region of germany.'])
+        np.testing.assert_array_equal(get_wikipedia_text('test_file.jsonl', lower_case=True), test_array)
+        return
 
     def test_remove_punctuation(self):
         np.testing.assert_array_equal(remove_punctuation(np.array(['Can, I be ! at office.', 'will you be there ?'])),
                                       np.array(['Can I be  at office', 'will you be there ']))
 
     def test_cleanup_data(self):
-        # pd_testing.assert_frame_equal(cleanup_data(pd.DataFrame({'Freiburg, will not fall!!'}, columns=['text'])),
-        #                              pd.DataFrame({'Freiburg will not fall'}, columns=['text']))
-        np.testing.assert_array_equal(remove_punctuation(np.array(['Can, I be ! at office.', 'will you be there ?'])),
+        np.testing.assert_array_equal(cleanup_data(np.array(['Can, I be ! at office.', 'will you be there ?'])),
                                       np.array(['Can I be  at office', 'will you be there ']))
 
     #
@@ -66,9 +76,9 @@ class Test_lstm_w_context(TestCase):
         args = parse_arguments()
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model, criterion, optimizer = initialize_model(args, device)
-        self.assertIsInstance(model, Model.LSTMModel)
+        self.assertIsInstance(model, torch.nn.parallel.DataParallel)
         self.assertIsInstance(criterion, torch.nn.modules.loss.CrossEntropyLoss)
-        self.assertIsInstance(optimizer, torch.optim.adam.Adam)
+        self.assertIsInstance(optimizer, torch.optim.Adam)
 
     def test_binarize(self):
         token = 'hyperbole'
@@ -85,9 +95,80 @@ class Test_lstm_w_context(TestCase):
         torch.testing.assert_close(binarize2(token, isLabelVector=True), torch.tensor(int(float(token))))
 
     def test_vectorize_data(self):
-        pass
+        dataset_old = ([
+                           ['i', 'hope', 'you', 'will', 'be']
+                       ], [0])
+
+        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=True)
+
+        self.assertEqual(torch.Size([2, 5, 228]), X_vec.shape)
+        self.assertEqual(torch.Size([2, 1]), Y_vec.shape)
+        self.assertEqual((2, 5), np.shape(X_token))
+
+        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=False)
+
+        self.assertEqual(torch.Size([1, 5, 228]), X_vec.shape)
+        self.assertEqual(torch.Size([1, 1]), Y_vec.shape)
+        self.assertEqual((5,), np.shape(X_token))
 
     def test_insert_errors(self):
+        dataset_old = np.array([[
+            'i', 'hope', 'you', 'will', 'be', '0'
+        ]])
+        dataset_new = np.array([
+            ['i', 'hope', 'you', 'will', 'be', '0', ],
+            ['i', 'hope', 'yu', 'will', 'be', '1.0']
+        ])
+        np.testing.assert_array_equal(insert_errors(dataset_old), dataset_new)
+
+    def test_get_bea60_data(self):
+        test_file_path = 'bea60k_sentences_test_file.json'
+
+        dataset_new = {"WANT TO THANK YOU FOR": 0,
+                       "In our Academy we are": 0,
+                       "I was trully dissapointed by": 1,
+                       "a dream becames true and": 1}
+
+        self.assertEqual(get_bea60_data(test_file_path), dataset_new)
+
+    def test_convert_to_numpy_valdata(self):
+        dataset_old = {"WANT TO THANK YOU FOR": 0,
+                       "In our Academy we are": 0,
+                       "I was trully dissapointed by": 1,
+                       "a dream becames true and": 1}
+
+        dataset_new = (
+            np.array(['WANT TO THANK YOU FOR', "In our Academy we are", "I was trully dissapointed by",
+                      "a dream becames true and"]),
+            np.array([0, 0, 1, 1])
+        )
+
+        x = convert_to_numpy_valdata(dataset_old)
+        np.testing.assert_equal(x[0], dataset_new[0])
+        np.testing.assert_equal(x[1], dataset_new[1])
+
+        pass
+
+    def test_generate_N_grams_valdata(self):
+        dataset_old = (
+            np.array(['WANT TO THANK YOU FOR', "In our Academy we are"]),
+            np.array([0,1])
+        )
+        #new_d , labels = generate_N_grams_valdata(dataset_old)
+        dataset_new = ([
+            [['WANT','TO','THANK','YOU','FOR']],
+            [['In','our','Academy','we','are']]
+        ],
+        np.array([0,1])
+        )
+        self.assertEqual(generate_N_grams_valdata(dataset_old)[0], dataset_new[0])
+        np.testing.assert_array_equal(generate_N_grams_valdata(dataset_old)[1],dataset_new[1])
+
+
+    def test_train_model(self):
+        pass
+
+    def test_val_model(self):
         pass
 
 

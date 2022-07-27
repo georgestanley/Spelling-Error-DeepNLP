@@ -10,7 +10,7 @@ import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
-    f1_score_manual
+    f1_score_manual, str2bool
 from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
@@ -34,13 +34,15 @@ def parse_arguments():
     parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
-    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
+    parser.add_argument('--lower_case_mode', type=str2bool, default=False,
+                        help="run experiments in lower case")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
@@ -56,15 +58,19 @@ def parse_arguments():
     return args
 
 
-def get_wikipedia_text(file_name):
+def get_wikipedia_text(file_name, lower_case):
     '''
     extracts the text part of the json file and returns as a numpy array
     and sets it to lower case
     '''
     data = []
     with open(file_name, encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            data.append(json.loads(line)["text"].lower())  ##TODO : Check if lower needed
+        if lower_case:
+            for i, line in enumerate(f):
+                data.append(json.loads(line)["text"].lower())
+        else:
+            for i, line in enumerate(f):
+                data.append(json.loads(line)["text"])
         data = np.array(data)
     return data
 
@@ -81,7 +87,7 @@ def remove_punctuation(texts):
 def cleanup_data(data):
     """
     contains lambda to remove punctuation
-    add additional cleaning functions over here if needed in future
+    Note: add additional cleaning functions over here if needed in future
     """
     f = lambda x: remove_punctuation(x)
     data = f(data)
@@ -130,7 +136,7 @@ def get_bea60_data(file_name):
         x = f.read()
         data = json.loads(x)
 
-    #data = np.array(data)
+    # data = np.array(data)
     return data
 
 
@@ -145,8 +151,8 @@ def convert_to_numpy_valdata(words):
     x1 = np.array(list(words.keys()))
     # x2 = np.zeros(x1.size)
     x2 = np.array(list(words.values()))
-    x = np.column_stack((x1, x2))
     return (x1, x2)
+
 
 def generate_N_grams_valdata(data):
     sentences = data[0]
@@ -154,14 +160,13 @@ def generate_N_grams_valdata(data):
     new_dataset = []
     label_dataset = []
     for n, sentence in enumerate(sentences):
-
         new_dataset.append([sentence.split()])
         label_dataset.append(labels[n])
-    #new_dataset = np.array(new_dataset)
-    #labels = np.array(label_dataset)
-
+    # new_dataset = np.array(new_dataset)
+    # labels = np.array(label_dataset)
 
     return new_dataset, labels
+
 
 class MyDataset(torch.utils.data.Dataset):
 
@@ -209,12 +214,9 @@ def initialize_model(args, device):
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
     model = nn.DataParallel(model)
     model = model.to(device)
-
-
     learning_rate = args.lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-    # criterion = nn.BCEWithLogitsLoss()
 
     return model, criterion, optimizer
 
@@ -308,9 +310,10 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
         f1 = f1_score_manual(TN, FP, FN, TP)
-        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1':f1}
-        logger.info(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
-              f"total_samples={total}")
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
+        logger.info(
+            f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+            f"total_samples={total}")
     # accuracy = 100 * correct / total
     # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
@@ -319,6 +322,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
 
 
 def binarize(tokens, alph):
+    # Unused function
+
     words = tokens[:-1]
     label = tokens[-1]
 
@@ -342,6 +347,7 @@ def binarize(tokens, alph):
 
 
 def vectorize_data(data_arr):
+    # Unused function
     # https://arxiv.org/pdf/1608.02214.pdf
     '''
     :param data_arr: tuple(2) ; (list[200],list[200])
@@ -402,7 +408,7 @@ def binarize2(tokens, isLabelVector=False):
     return torch.tensor(bin)
 
 
-def vectorize_data2(data_arr, with_error ):
+def vectorize_data2(data_arr, with_error):
     '''
     Uses np broadcasting instead of earlier technique
     :param data_arr: ndarray (batch_len,6) ; e.g. [[['big' 'brother' 'ninetepn' 'eightyfour' 'big' '0']]]
@@ -468,12 +474,12 @@ def insert_errors(data):  #
                 yy = np.array2string(x).replace("'", "")
                 rep_pos = np.random.randint(low=0, high=len(yy))
                 # temp.append(yy[0:rep_pos] + yy[rep_pos + 1:])
-                false_str = data[i][:-1]
+                false_str = data[i][:-1].copy()
                 false_str[2] = yy[0:rep_pos] + yy[rep_pos + 1:]
                 temp.append(false_str)
         elif switch_val == 3:
             if get_rand01() == 1 and len(x) > 1:
-                #Type 3: add an extra character
+                # Type 3: add an extra character
                 yy = np.array2string(x).replace("'", "")
                 rep_char = int2char(np.random.randint(0, 26))
                 rep_pos = np.random.randint(low=0, high=len(yy))
@@ -492,19 +498,18 @@ def insert_errors(data):  #
 def main(args, device):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
-    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file), lower_case=args.lower_case_mode)
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
 
-    #val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
-    #val_data = cleanup_data(val_data)
-    #val_data = generate_N_grams(val_data)
+    # val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
+    # val_data = cleanup_data(val_data)
+    # val_data = generate_N_grams(val_data)
 
     val_data = get_bea60_data(os.path.join(args.data_folder, args.val_file))
     # "bea60k.repaired.val//bea60_sentences_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams_valdata(val_data)
-
 
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
@@ -526,7 +531,7 @@ def main(args, device):
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
-        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch,logger)
+        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch, logger)
         val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')
@@ -553,10 +558,10 @@ if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
     device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
-    #print(f"running on {device}")
+    # print(f"running on {device}")
     print("LSTM Spelling Classifier with Context")
     print(vars(args))
     print()
     main(args, device)
-    #eval_model()
+    # eval_model()
     print(datetime.now() - start)

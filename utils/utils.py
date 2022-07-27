@@ -6,6 +6,7 @@ import numpy as np
 import os, logging, datetime
 import time
 import torch
+import argparse
 
 alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
@@ -28,6 +29,17 @@ np.random.seed(0)
 #             correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
 #             res.append(correct_k.mul_(100.0 / batch_size))
 #         return res
+
+# https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=None, num_classes=1):
