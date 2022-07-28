@@ -193,9 +193,9 @@ def collate_fn(batch):
     return temp_x, temp_y
 
 
-def convert_to_pytorch_dataset(train_data, val_data, args):
+def convert_to_pytorch_dataset(train_data, val_data, batch_size):
     train_dataset = MyDataset(train_data)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False, collate_fn=collate_fn,
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn,
                                   # num_workers=1,pin_memory=True
                                   )
 
@@ -205,16 +205,17 @@ def convert_to_pytorch_dataset(train_data, val_data, args):
     return train_dataloader, val_dataloader
 
 
-def initialize_model(args, device):
+def initialize_model(hidden_dim, hidden_layers, lr, device):
     input_dim = alph_len * 3
-    hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
-    layer_dim = args.hidden_layers
+
+    hidden_dim = hidden_dim  # TODO : Iterate over different hidden dim sizes
+    layer_dim = hidden_layers
     output_dim = 2
 
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
     model = nn.DataParallel(model)
     model = model.to(device)
-    learning_rate = args.lr
+    learning_rate = lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
@@ -234,8 +235,8 @@ def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
 
-        outputs = model(X_vec)  # (n_words, 2)#
-        loss = criterion(outputs, Y_vec)
+        outputs = model(X_vec)  # (n_words, 2)# input shape : Tensor(batch_size_with_error, 5,228)
+        loss = criterion(outputs, Y_vec)  # output shape: Tensor(batch_size:with_error, 2)
         _, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()
         # c = collections.Counter(Y_vec.cpu().detach().numpy())
@@ -514,8 +515,9 @@ def main(args, device):
     # dataz = np.load('data\\5_gram_dataset.npz')
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, args)
-    model, criterion, optim = initialize_model(args, device)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
+    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim,hidden_layers=args.hidden_layers,lr=args.lr,
+                                               device=device)
     # model = nn.DataParallel(model)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])

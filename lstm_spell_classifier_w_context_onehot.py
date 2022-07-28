@@ -13,7 +13,7 @@ import sys
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
-    f1_score_manual
+    f1_score_manual, str2bool
 # import wandb
 from sklearn.metrics import f1_score, confusion_matrix
 from datetime import datetime
@@ -36,10 +36,10 @@ np.random.seed(0)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_folder', type=str, help="folder containing the data")
+    parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
-    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=32, help='batch_size')
@@ -47,6 +47,8 @@ def parse_arguments():
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
     parser.add_argument('--maxlen', type=int, default=60, help='the max length of words in a single seq')
+    parser.add_argument('--lower_case_mode', type=str2bool, default=False,
+                        help="run experiments in lower case")
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     parser.add_argument('--gpu_id',type=int,default=0,help="the gpu id at pool")
@@ -180,9 +182,9 @@ def generate_N_grams_valdata(data):
     return new_dataset, labels
 
 
-def convert_to_pytorch_dataset(train_data, val_data):
+def convert_to_pytorch_dataset(train_data, val_data, batch_size):
     train_dataset = MyDataset(train_data)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.bs, shuffle=False,
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False,
                                   #num_workers=0, pin_memory=True
                                   )
 
@@ -210,17 +212,17 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-def initialize_model(args, device):
+def initialize_model(hidden_dim, hidden_layers, lr, device):
     input_dim = len(alph)
-    hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
-    layer_dim = args.hidden_layers
+    hidden_dim = hidden_dim  # TODO : Iterate over different hidden dim sizes
+    layer_dim = hidden_layers
     output_dim = 2
 
     model = LSTMModelForOneHotEncodings(input_dim, hidden_dim, layer_dim, output_dim, device)
     model = nn.DataParallel(model)
     model.to(device)
 
-    learning_rate = args.lr
+    learning_rate = lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
     # criterion = nn.BCEWithLogitsLoss()
@@ -278,9 +280,9 @@ def insert_errors(data):  #
     return data, labels
 
 
-def one_hot_encode_data(data, with_error, labels, shuffle):
+def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
     new_dataset =data
-    maxlen = args.maxlen
+    maxlen = maxlen
     if with_error:
         new_dataset, labels = insert_errors(new_dataset)
     arr_len = []
@@ -315,7 +317,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
     # model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=True,labels=data[1], shuffle=True)
+        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=True,labels=data[1], shuffle=True, maxlen=args.maxlen)
         X_vec = X_vec.type(torch.FloatTensor).to(device)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
@@ -324,7 +326,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
         #print("X_vec shape after:",X_vec.shape)
 
 
-        outputs = model(X_vec, sent_len)  # (n_words, 2)#
+        outputs = model(X_vec, sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len) , output: Tensor(batch_len,
         loss = criterion(outputs, Y_vec)
         _, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()
@@ -363,7 +365,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             # data = next(iter(val_loader))
-            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False)
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False, maxlen=args.maxlen)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
             sent_len = torch.tensor(sentence_length, device=device)
@@ -412,7 +414,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
 def main(args):
     writer = SummaryWriter()
     logger = get_logger(args.output_folder, args.exp_name)
-    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file))
+    train_data = get_wikipedia_text(os.path.join(args.data_folder, args.input_file), lower_case=args.lower_case_mode)
     train_data = cleanup_data(train_data)
     train_data = generate_N_grams(train_data)
     # val_data = get_wikipedia_text(os.path.join(args.data_folder, args.val_file))
@@ -423,9 +425,9 @@ def main(args):
     # "bea60k.repaired.val//bea60_sentences_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
     # val_data = cleanup_data(val_data)
-    val_data = generate_N_grams_valdata(val_data),
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
-    model, criterion, optim = initialize_model(args, device)
+    val_data = generate_N_grams_valdata(val_data)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
+    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim,hidden_layers=args.hidden_layers,lr=args.lr,device=device)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
@@ -514,7 +516,7 @@ def evaluate():
     val_data = cleanup_data(val_data)
     val_data = generate_N_grams(val_data)
 
-    _, val_loader = convert_to_pytorch_dataset(val_data, val_data)
+    _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
     model, criterion, optim = initialize_model(args, device)
     print("Dataset size: {} samples".format(len(val_loader.dataset)))  # TODO
 
