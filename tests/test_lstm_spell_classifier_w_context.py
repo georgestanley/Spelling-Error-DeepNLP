@@ -59,21 +59,25 @@ class Test_lstm_w_context(TestCase):
         input_2 = ([['hope', 'you', 'stay', 'here', 'now'],
                     ['i', 'cannot', 'maze', 'it', 'tonight']], [0, 1])
 
-        args = parse_arguments()
-        dataset_size = 2
-        dataloader_1, dataloader_2 = convert_to_pytorch_dataset(input_1, input_2, args)
+        dataset_size = len(input_1)
+        dataloader_1, dataloader_2 = convert_to_pytorch_dataset(train_data=input_1, val_data=input_2, batch_size=1)
         self.assertEqual(len(dataloader_1.dataset), dataset_size)
         self.assertEqual(len(dataloader_2.dataset), dataset_size)
         self.assertIsInstance(dataloader_1, torch.utils.data.dataloader.DataLoader)
         self.assertIsInstance(dataloader_2, torch.utils.data.dataloader.DataLoader)
 
     def test_initialize_model(self):
-        args = parse_arguments()
+
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        model, criterion, optimizer = initialize_model(args, device)
+        model, criterion, optimizer = initialize_model(hidden_dim=100, hidden_layers=2, lr=0.001, device=device)
         self.assertIsInstance(model, torch.nn.parallel.DataParallel)
         self.assertIsInstance(criterion, torch.nn.modules.loss.CrossEntropyLoss)
         self.assertIsInstance(optimizer, torch.optim.Adam)
+
+        output = model(torch.rand(1841,5,228))
+        self.assertEqual(output.shape,torch.Size([1841,2]))
+
+
 
     def test_binarize(self):
         token = 'hyperbole'
@@ -147,18 +151,17 @@ class Test_lstm_w_context(TestCase):
     def test_generate_N_grams_valdata(self):
         dataset_old = (
             np.array(['WANT TO THANK YOU FOR', "In our Academy we are"]),
-            np.array([0,1])
+            np.array([0, 1])
         )
-        #new_d , labels = generate_N_grams_valdata(dataset_old)
+        # new_d , labels = generate_N_grams_valdata(dataset_old)
         dataset_new = ([
-            [['WANT','TO','THANK','YOU','FOR']],
-            [['In','our','Academy','we','are']]
-        ],
-        np.array([0,1])
+                           [['WANT', 'TO', 'THANK', 'YOU', 'FOR']],
+                           [['In', 'our', 'Academy', 'we', 'are']]
+                       ],
+                       np.array([0, 1])
         )
         self.assertEqual(generate_N_grams_valdata(dataset_old)[0], dataset_new[0])
-        np.testing.assert_array_equal(generate_N_grams_valdata(dataset_old)[1],dataset_new[1])
-
+        np.testing.assert_array_equal(generate_N_grams_valdata(dataset_old)[1], dataset_new[1])
 
     def test_train_model(self):
         pass
