@@ -32,8 +32,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
-    parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
-    parser.add_argument('--val_file', type=str, default='dev_10.jsonl')
+    parser.add_argument('--input_file', type=str, default='top_100_words.json')
+    parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_words_val_truth_and_false.json')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
@@ -242,12 +242,6 @@ def convert_to_pytorch_dataset(train_data, val_data):
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True)
 
     return my_dataloader, val_dataloader
-
-
-def test_dataloader(my_dataloader):
-    for i, (word, label) in enumerate(my_dataloader):
-        print(i, word, label)
-        return
 
 
 def initialize_model(n_hidden_layers):
