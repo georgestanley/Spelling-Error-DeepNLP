@@ -17,12 +17,38 @@ class Test_lstm_wo_context(TestCase):
         self.assertEqual(get_wikipedia_words(file_name='test_words.json'),dataset_new)
 
     def test_insert_errors(self):
-        pass
+
+        dataset_old = np.array([
+            ['february',0],
+            ['January', 0],
+            ['boy',0]
+        ])
+        dataset_new = np.array([
+                                ['february', '0'],
+                                ['January' ,'0'],
+                                ['boy','0'], # no error word as len <= 3
+                                ['febuary' ,'1.0'],
+                                ['Jhanuary' ,'1.0']
+        ])
+        np.testing.assert_array_equal(insert_errors(dataset_old), dataset_new)
+
 
     def test_binarize(self):
         pass
 
     def test_vectorize_data(self):
+        dataset_old = [
+            ('february', 'January'),
+            torch.tensor([0,0])
+        ]
+        X_vec, Y_vec, X_token = vectorize_data(dataset_old, with_error=True, shuffle=True)
+        print(str(X_vec[1].data).replace('.,','').replace('\n','').replace(' ',''))
+        print(X_vec[2])
+        print(X_vec[3])
+
+        #t1: check X_vec shape
+        #t2 :check Y_vec data
+        #t3 :check X_token data
         pass
 
     def test_convert_to_numpy(self):
