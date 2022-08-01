@@ -12,6 +12,7 @@ alphabet_string = string.ascii_lowercase
 alphabet_list = list(alphabet_string)
 all_letters = string.ascii_letters + " .,;'"
 np.random.seed(0)
+torch.manual_seed(0)
 
 
 # def accuracy(output, target, topk=(1,)):

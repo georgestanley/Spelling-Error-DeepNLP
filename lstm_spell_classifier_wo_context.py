@@ -184,8 +184,7 @@ def convert_to_numpy(words):
 
     x1 = np.array(list(words.keys()))
     x2 = np.zeros(x1.size)
-    x = np.column_stack((x1, x2))
-    return (x1, x2)
+    return x1, x2
 
 
 def convert_to_numpy_valdata(words):
@@ -202,10 +201,8 @@ def convert_to_numpy_valdata(words):
         del words[x]
 
     x1 = np.array(list(words.keys()))
-    # x2 = np.zeros(x1.size)
     x2 = np.array(list(words.values()))
-    x = np.column_stack((x1, x2))
-    return (x1, x2)
+    return x1, x2
 
 
 class MyDataset(torch.utils.data.Dataset):
@@ -223,7 +220,7 @@ class MyDataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 
-def convert_to_pytorch_dataset(train_data, val_data):
+def convert_to_pytorch_dataset(train_data, val_data, batch_size):
     '''
 
     :param data: tuple (2)
@@ -236,7 +233,7 @@ def convert_to_pytorch_dataset(train_data, val_data):
     val_words, val_labels = val_data[0], val_data[1]
 
     my_dataset = MyDataset(words, labels)
-    my_dataloader = DataLoader(my_dataset, batch_size=args.bs, shuffle=True)
+    my_dataloader = DataLoader(my_dataset, batch_size=batch_size, shuffle=True)
 
     val_dataset = MyDataset(val_words, val_labels)
     val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True)
@@ -244,16 +241,16 @@ def convert_to_pytorch_dataset(train_data, val_data):
     return my_dataloader, val_dataloader
 
 
-def initialize_model(n_hidden_layers):
+def initialize_model(n_hidden_layers, hidden_dim, lr, device):
     input_dim = 228
-    hidden_dim = args.hidden_dim  # TODO : Iterate over different hidden dim sizes
+    hidden_dim = hidden_dim  # TODO : Iterate over different hidden dim sizes
     layer_dim = n_hidden_layers
     output_dim = 2
 
     model = LSTMModel(input_dim, hidden_dim, layer_dim, output_dim, device)
     model.to(device)
 
-    learning_rate = args.lr
+    learning_rate = lr
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
     # criterion = nn.BCEWithLogitsLoss()
@@ -355,8 +352,8 @@ def main(args):
     # "bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
     val_data = convert_to_numpy_valdata(val_data)
 
-    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data)
-    model, criterion, optim = initialize_model(n_hidden_layers=args.hidden_layers)
+    train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
+    model, criterion, optim = initialize_model(n_hidden_layers=args.hidden_layers, hidden_dim=args.hidden_dim, lr=args.lr, device=device)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
