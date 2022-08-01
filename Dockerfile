@@ -10,15 +10,18 @@ RUN apt-get install -y make vim
 
 COPY Makefile Makefile
 COPY bashrc bashrc
-#COPY requirements.txt .
-#COPY *.py .
-#COPY utils utils
-#COPY data/bea60k.repaired/ data/bea60k.repaired/
-#COPY data/bea60k.repaired.test/ data/bea60k.repaired.test/
-#COPY data/bea60k.repaired.val/ data/bea60k.repaired.val/
-#COPY data/top_all_words_over_200000.json data/top_all_words_over_200000.json
-#COPY data/dev_10.jsonl data/dev_10.jsonl
-#RUN pip install -r requirements.txt
+COPY requirements.txt .
+COPY lstm_spell_classifier_wo_context.py .
+COPY lstm_spell_classifier_w_context.py .
+COPY lstm_spell_classifier_w_context_onehot.py .
+COPY Model.py .
+COPY utils utils
+COPY data/bea60k.repaired/ data/bea60k.repaired/
+COPY data/bea60k.repaired.test/ data/bea60k.repaired.test/
+COPY data/bea60k.repaired.val/ data/bea60k.repaired.val/
+COPY data/top_all_words_over_200000.json data/top_all_words_over_200000.json
+COPY data/dev_10.jsonl data/dev_10.jsonl
+RUN pip install -r requirements.txt
 
 CMD ["/bin/bash", "--rcfile", "bashrc"]
 
