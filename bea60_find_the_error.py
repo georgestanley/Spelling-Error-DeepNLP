@@ -1,4 +1,9 @@
+import re
+
+import string
+
 import json
+import numpy as np
 from math import floor
 
 
@@ -59,23 +64,40 @@ def main():
     pass
 
 
+punctuation = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
+
+def remove_punctuation(texts):
+    '''
+    removes the punctuations
+    '''
+    stripPunct = str.maketrans('', '', punctuation)
+    new = [i.translate(stripPunct) for i in texts]
+    new = ''.join(new)
+    return new
+
+
 def check_sent_is_alpha(words):
 
     for word in words :
-        if word.isalpha() == False:
+        if re.match(r'^[A-Za-z0-9*]+$', word):
+            #if word.isalpha() == False:
+            return True
+        else:
             return False
 
     return True
 
 def main2():
     data_correct, data_corrupt = [], []
-    with open('data//bea60k.repaired.test//correct.txt', encoding="utf-8") as f:
+    with open('data//bea60k.repaired.val//correct.txt', encoding="utf-8") as f:
         for i, line in enumerate(f):
-            data_correct.append(line)
+            data_correct.append(remove_punctuation(line))
+            #data_correct.append(line)
 
-    with open('data//bea60k.repaired.test//corrupt.txt', encoding="utf-8") as f:
+    with open('data//bea60k.repaired.val//corrupt.txt', encoding="utf-8") as f:
         for i, line in enumerate(f):
-            data_corrupt.append(line)
+            data_corrupt.append(remove_punctuation(line))
+            #data_corrupt.append(line)
 
     false_words = []
     truth_words = []
@@ -83,7 +105,7 @@ def main2():
 
     sentence_len = 5
     for i, data in enumerate(zip(data_correct, data_corrupt)):
-        #if i != 254:
+        #if i != 29900-1:
         #    continue
         x_temp = data[0].split()
         y_temp = data[1].split()
@@ -97,8 +119,8 @@ def main2():
                     if j == 0:
                         # left side issue
                         print(1)
-                        t_texts.append([x_temp[j-1], x_temp[j + 1-1], x_temp[j + 2-1], x_temp[j + 3-1], x_temp[j + 4-1]])
-                        f_texts.append([y_temp[j-1], y_temp[j + 1-1], y_temp[j + 2-1], y_temp[j + 3-1], y_temp[j + 4-1]])
+                        t_texts.append(["*","*", x_temp[j + 1-1], x_temp[j + 2-1], x_temp[j + 3-1]])
+                        f_texts.append(["*","*", y_temp[j + 1-1], y_temp[j + 2-1], y_temp[j + 3-1]])
                     elif j == 1:
                         print(2)
                         t_texts.append(["*", x_temp[j-1], x_temp[j + 1-1], x_temp[j + 2-1], x_temp[j + 3-1]])
@@ -130,6 +152,7 @@ def main2():
         for j, x in enumerate(zip(data[0], data[1])):
             print(len(truth_dict), len(false_dict), x[0], x[1])
             print(' '.join(x[0]).isalpha())
+
             if check_sent_is_alpha(x[0]):
                 truth_dict[' '.join(x[0])] = 0
 
