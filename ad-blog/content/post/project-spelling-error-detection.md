@@ -116,16 +116,93 @@ However, RNN networks also experience a phenomena known as exploding/vanishing g
 LSTMs solve the problem of vanishing gradient by introducing gates inside the network that regulate the flow of information within a cell. Due to this, networks can now learn from sequences that are of longer length.
 
 </ol>
+
+<p><i>Note: The project began with experimenting on Multi-Layer Perceptrons (MLP) and Recurrent Neural Networks(RNN). Howoever, since the results in the initial stages were not very promising, we dedicated more focus towards LSTM networks. Hence, only LSTM evaluation results are listed below.</i>
 </div>
 
 <div id="div7">
 <li>Dataset Preparation:</li>
-Our experiments were focused on two angles: context based and non-context based 
+<ul>
+<li>Training</li>
+Our experiments were focused on two angles: context based and non-context based. 
+As the name suggests, in the non-context based approach, the model is trained only on individual words. The input was not a sentence of words but just a single word.
+For the non-context based approach, the model was trained on words and the contextual words that appeared before and after it.
+For our experiments, the models were shown two context words before and after the target word. 
+<p>Example: In the sentence <i>We need <b>suffcient</b> carbohydrates in our body </i> , for the target word sufficient, the input sentence would be  <i>We need <b>suffcient</b> carbohydrates in </i> i.e. the two sequential words before and after the target.
+
+<p>For the non-context based approach, we extracted all the individual words from Wikipedia articles and filtered out the words which occurred more than 20 times. This additional filtering had to be done to remove words that were misspelt or words that occured very rarely in the encyclopedia. The final dataset contained ****** words.
+<p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 1000 wikipedia articles. The final dataset contained ******** 5-gram pairs.
+
+<p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig **). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
+
+<li>Evaluation:</li>
+The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. So,the final dataset size was
+Validation set: ******
+Samples with error: ****
+Samples without error: *****
+
+Test Set: ****
+Samples with error: ****
+Samples without error: ****
+
+
+</ul>
+</div>
+
+<div id = "div9">Training: Prameters
+<table>
+<tr>
+<th></th>
+<th>LSTM without context</th>
+<th>LSTM with context</th>
+<th>LSTM with context</th>
+</tr>
+
+<tr>
+<td>encoding</td>
+<td>Semi-Character</td>
+<td>Semi-Character</td>
+<td>One-hot encoding</td>
+</tr>
+
+<tr>
+<td>epoch</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>Learning Rate</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>Optimizer</td>
+<td>ADAM</td>
+<td>ADAM</td>
+<td>ADAM</td>
+</tr>
+
+<tr>
+<td>Loss</td>
+<td>Cross Entropy Loss</td>
+<td>Cross Entropy Loss</td>
+<td>Cross Entropy Loss</td>
+</tr>
+
+</table>
 </div>
 
 
 <div id="div10">
-<li>Future Improvements:</li>:
+<li>Future Improvements:</li>
+</div>
+
+<div id="div10">
+<li>Future Improvements:</li>
 </div>
 
 </ol>
