@@ -196,6 +196,38 @@ Samples without error: ****
 </table>
 </div>
 
+<div id="div8">
+<li>Results:</li>
+<table>
+
+<tr>
+<th></th>
+<th>Accuracy</th>
+<th>F1 Score</th>
+</tr>
+
+<tr>
+<td>LSTM without Context</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>LSTM with Context (Semi-Character)</td>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td>LSTM with Context (One-hot)</td>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<Confusion Matrix 1,2,3>
+</div>
+
 
 <div id="div10">
 <li>Future Improvements:</li>
