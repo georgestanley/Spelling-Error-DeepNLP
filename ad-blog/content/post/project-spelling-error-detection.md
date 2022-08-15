@@ -35,11 +35,17 @@ The advent of computers into almost all spheres of human-life has made us more d
 But, human beings are still prone to make spelling errors. In this project, we try to detect spelling errors in an English language input text.
 
 </div>
+<br>
+<div id="div2">
+<li><b>PROBLEM STATEMENT:</b></li> 
+Given a Sentence in English language as input, develop a program that tells which word is incorrectly spelled.
+</div>
 
+<br>
 <div id="div4">
 <b><li>DATASETS</li> </b>
 In this project, we used two datasets for training and evaluation respectively. We decided to use two datasets so as to ensure our model has been able to generalise better instead of simply memorizing all words.
-<ol>
+<ol type="i">
 <li><b>Wikipedia Dataset</b></li>
 In this project, the Wikipedia dataset (collected by the Chair) was used for training the models. The datasets were already split up as development, training and testing files - however we used only the training file for our model's training task.
 <p><b>Motivation to choose it :</b>Since Wikipedia is a public website, we expect less spelling mistakes. Moreover, it also offers articles from a wide variety of topics.
@@ -113,8 +119,8 @@ LSTMs solve the problem of vanishing gradient by introducing gates inside the ne
 </div>
 
 <div id="div7">
-<li>Dataset Preparation</li>:
-5 gram preparation.
+<li>Dataset Preparation:</li>
+Our experiments were focused on two angles: context based and non-context based 
 </div>
 
 
