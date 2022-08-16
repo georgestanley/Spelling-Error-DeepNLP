@@ -5,7 +5,7 @@ import torch
 
 import Model
 from lstm_spell_classifier_wo_context import insert_errors, binarize, vectorize_data, get_wikipedia_words, convert_to_numpy, \
-    convert_to_numpy_valdata, convert_to_pytorch_dataset, initialize_model, train_model, val_model, load_and_test_model
+    convert_to_numpy_valdata, convert_to_pytorch_dataset, initialize_model, train_model, val_model
 
 torch.manual_seed(0)
 np.random.seed(0)

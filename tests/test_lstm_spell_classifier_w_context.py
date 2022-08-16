@@ -98,13 +98,13 @@ class Test_lstm_w_context(TestCase):
                            ['i', 'hope', 'you', 'will', 'be']
                        ], [0])
 
-        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=True)
+        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=True, shuffle=False)
 
         self.assertEqual(torch.Size([2, 5, 228]), X_vec.shape)
         self.assertEqual(torch.Size([2, 1]), Y_vec.shape)
         self.assertEqual((2, 5), np.shape(X_token))
 
-        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=False)
+        X_vec, Y_vec, X_token = vectorize_data2(dataset_old, with_error=False, shuffle=False)
 
         self.assertEqual(torch.Size([1, 5, 228]), X_vec.shape)
         self.assertEqual(torch.Size([1, 1]), Y_vec.shape)
