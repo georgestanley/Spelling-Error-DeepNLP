@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
     f1_score_manual, str2bool
 # import wandb
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
 from datetime import datetime
 
 all_letters = string.ascii_letters + " .,;'"
@@ -189,7 +189,7 @@ def convert_to_pytorch_dataset(train_data, val_data, batch_size):
                                   )
 
     val_dataset = MyDataset(val_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True,
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False,
                                 # collate_fn=collate_fn
                                 )
 
@@ -279,6 +279,13 @@ def insert_errors(data):  #
     data = list(data) + temp
     return data, labels
 
+def char_index(character):
+    try:
+        return alph.index(character)
+    except:
+        return alph.index('*')
+    pass
+
 
 def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
     new_dataset =data
@@ -292,7 +299,7 @@ def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
         arr_len.append(len(new_dataset[n]) - 1)
         new_dataset[n] = new_dataset[n].ljust(maxlen, '*')
         # for i in range(len(new_dataset)):
-        xx = [alph.index(character) for character in new_dataset[n]]
+        xx = [char_index(character) for character in new_dataset[n]]
         new_dataset[n] = xx  # new_dataset : list(dataset_len) ; e.g. [[27, 34, 32, 76, 21, ... ], [28,25,25,..]]
 
     new_dataset = np.array(new_dataset)
@@ -305,6 +312,7 @@ def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
         r = torch.randperm(new_dataset.size()[0])
         new_dataset = new_dataset[r]
         labels = labels[r]
+        #arr_len = arr_len[r] # TODO: fix this
 
     return new_dataset, labels, arr_len
 
@@ -472,9 +480,10 @@ def eval_model(val_loader, model, criterion):
 
     total_loss = 0
     total = 0
+    TN, FP, FN, TP = 0, 0, 0, 0
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, sentence_length = one_hot_encode_data(new_dataset=list(data[0]), labels=data[1])
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False, maxlen=args.maxlen)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
             outputs = model(X_vec, sentence_length)  # (n_words, 2)
@@ -484,8 +493,13 @@ def eval_model(val_loader, model, criterion):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
             c = collections.Counter(predicted.cpu().detach().numpy())
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
+
             print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
@@ -493,31 +507,40 @@ def eval_model(val_loader, model, criterion):
             #temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
             #to_print = np.row_stack((to_print, temp_to_print))
 
-        # to_print = pd.DataFrame(to_print)
-        # to_print.to_csv('data2.csv')
-        # mean_val_loss = total_loss / total
-        alpha = (len(val_loader.dataset)) / batch_size
+        #to_print = pd.DataFrame(to_print)
+        #to_print.to_csv('data2.csv')
+        #mean_val_loss = total_loss / total
+        alpha = (len(val_loader.dataset)) / 1000
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
+        f1 = f1_score_manual(TN, FP, FN, TP)
         print(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
               f"total_samples={total}")
+        disp = ConfusionMatrixDisplay(confusion_matrix=np.array([[TN, FP], [FN, TP]]))
+        disp.plot()
+        plt.show()
     return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 
 def evaluate():
-    path = ""
-    PATH = "results//lstm_context_onehot//lr0.001_bs32_optimAdam_hidden_dim512_hidden_layers2_//20220705230341_models//ckpt_best_22.pth"
-    model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
+
+    PATH = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220721103824_models//ckpt_best_37.pth"
+    #model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
+
+
+    val_data = get_bea60_data(
+        os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
+    val_data = convert_to_numpy_valdata(val_data)
+    # val_data = cleanup_data(val_data)
+    val_data = generate_N_grams_valdata(val_data)
+    _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
+
+
+    model, criterion, optim = initialize_model(hidden_dim=512, hidden_layers=2, lr=0.001,device='cuda')
     model.load_state_dict(torch.load(PATH))
     model.to(device)
     model.eval()
 
-    val_data = get_wikipedia_text(os.path.join(args.data_folder, 'val_25_for_dev_500.jsonl'))
-    val_data = cleanup_data(val_data)
-    val_data = generate_N_grams(val_data)
-
-    _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
-    model, criterion, optim = initialize_model(args, device)
     print("Dataset size: {} samples".format(len(val_loader.dataset)))  # TODO
 
     val_loss, val_acc, val_f1 = eval_model(val_loader, model, criterion)
@@ -535,5 +558,5 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args)
-    # evaluate()
+    #evaluate()
     print(datetime.now() - start)

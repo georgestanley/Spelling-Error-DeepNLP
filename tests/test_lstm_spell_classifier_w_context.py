@@ -108,7 +108,7 @@ class Test_lstm_w_context(TestCase):
 
         self.assertEqual(torch.Size([1, 5, 228]), X_vec.shape)
         self.assertEqual(torch.Size([1, 1]), Y_vec.shape)
-        self.assertEqual((5,), np.shape(X_token))
+        self.assertEqual((1,5), np.shape(X_token))
 
     def test_insert_errors(self):
         dataset_old = np.array([[

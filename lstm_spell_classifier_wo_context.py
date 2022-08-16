@@ -1,3 +1,5 @@
+import collections
+
 import pandas as pd
 import string, argparse, json, os
 import numpy as np
@@ -10,9 +12,10 @@ from Model import MLPNetwork, RNN, LSTMModel
 import sys, random
 from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
-from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs, f1_score_manual
+from utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs, \
+    f1_score_manual
 # import wandb
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
 from datetime import datetime
 
 all_letters = string.ascii_letters + " .,;'"
@@ -311,7 +314,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            #f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            # f1 = f1_score(predicted.cpu(), Y_vec.cpu())
             tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
             TN += tn
             FP += fp
@@ -324,14 +327,15 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             to_print = np.row_stack((to_print, temp_to_print))
 
     to_print = pd.DataFrame(to_print)
-    to_print.to_csv(os.path.join(args.output_folder,'data2.csv'))
+    to_print.to_csv(os.path.join(args.output_folder, 'data2.csv'))
     alpha = (len(val_loader.dataset)) / batch_size
     mean_val_loss = total_loss / alpha
     mean_val_accuracy = 100 * correct / total
     f1 = f1_score_manual(TN, FP, FN, TP)
     scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
-    logger.info(f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
-          f"total_samples={total}")
+    logger.info(
+        f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
+        f"total_samples={total}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
     return mean_val_loss, mean_val_accuracy.cpu(), f1
 
@@ -345,15 +349,16 @@ def main(args):
     train_data = get_wikipedia_words(os.path.join(args.data_folder, args.input_file))
     train_data = convert_to_numpy(train_data)
 
-    #val_data2 = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
-    #val_data2 = convert_to_numpy_valdata(val_data2)
+    # val_data2 = get_wikipedia_words(os.path.join(args.data_folder, "val_set_with_error.json"))
+    # val_data2 = convert_to_numpy_valdata(val_data2)
 
     val_data = get_wikipedia_words(os.path.join(args.data_folder, args.val_file))
-    # "bea60k.repaired.val/bea60_words_val_truth_and_false.json"))
+    # This function is also compatible with BEA-60k words dataset. So no function has been reused
     val_data = convert_to_numpy_valdata(val_data)
 
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
-    model, criterion, optim = initialize_model(n_hidden_layers=args.hidden_layers, hidden_dim=args.hidden_dim, lr=args.lr, device=device)
+    model, criterion, optim = initialize_model(n_hidden_layers=args.hidden_layers, hidden_dim=args.hidden_dim,
+                                               lr=args.lr, device=device)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
@@ -388,30 +393,85 @@ def main(args):
     return
 
 
-def load_and_test_model():
-    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_//20220628175920_models//ckpt_best_24.pth"
-    model = LSTMModel(input_dim=228, hidden_dim=256, layer_dim=1, output_dim=2, device='cuda:0')
+def test_model():
+    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models//ckpt_best_47.pth"
+
+    # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
+
+    val_data = get_wikipedia_words(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_words_test_truth_and_false.json'))
+    # This function is also compatible with BEA-60k words dataset. So no function has been reused
+    val_data = convert_to_numpy_valdata(val_data)
+
+    _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
+    model, criterion, _ = initialize_model(hidden_dim=1024, n_hidden_layers=2, lr=0.01, device='cuda')
     model.load_state_dict(torch.load(PATH))
     model.to(device)
-    # model.load_state_dict(['model_state_dict'])
-    data = [('eardh', 'minuster'), (1, 1)]
-    # data = [('compare','contrast'),(1,1)]
     model.eval()
 
-    X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
-    X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
-    Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
-    outputs = model(X_vec)  # (n_words, 2)
-    _, predicted = torch.max(outputs.data, 1)
-    print(outputs.data)
-    print(predicted)
+    print("Dataset size: {} samples".format(len(val_loader.dataset)))
+
+    correct = 0
+    total_loss = 0
+    total = 0
+    TN, FP, FN, TP = 0, 0, 0, 0
+
+    to_print = np.empty((1, 3))
+    with torch.no_grad():
+        for i, data in enumerate(val_loader):
+            X_vec, Y_vec, X_token = vectorize_data(data, with_error=False, shuffle=False)  # xx shape:
+            X_vec = torch.unsqueeze(X_vec, 1).requires_grad_().to(device)  # (n_words,228) --> (n_words , 1, 228)
+            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+
+            outputs = model(X_vec)  # (n_words, 2)
+
+            _, predicted = torch.max(outputs.data, 1)
+            total += Y_vec.size(0)
+
+            loss = criterion(outputs, Y_vec)
+            correct += (predicted == Y_vec).sum()
+
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
+
+            c = collections.Counter(predicted.cpu().detach().numpy())
+            print(c)
+            batch_size = Y_vec.size(0)
+            total_loss += loss.item()
+
+            temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            to_print = np.row_stack((to_print, temp_to_print))
+
+        to_print = pd.DataFrame(to_print)
+        to_print.to_csv(os.path.join(args.model_folder, "data2.csv"))
+        # to_print.to_csv('data2.csv')
+        # mean_val_loss = total_loss / total
+        alpha = (len(val_loader.dataset)) / 1000 ##TODO: Verify this
+        # alpha = 1000 / batch_size
+        mean_val_loss = total_loss / alpha
+        mean_val_accuracy = 100 * correct / total
+        f1 = f1_score_manual(TN, FP, FN, TP)
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
+        disp = ConfusionMatrixDisplay(confusion_matrix=np.array([[TN, FP], [FN, TP]]))
+        disp.plot()
+        plt.show()
+
+    # accuracy = 100 * correct / total
+    print(scalar_dict)
+    # save_in_log(writer, epoch, scalar_dict=scalar_dict)
+
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 
 if __name__ == "__main__":
+    start = datetime.now()
     args = parse_arguments()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print("LSTM Spelling Classifier")
     print(vars(args))
     print()
-    main(args)
-    # load_and_test_model()
+    #main(args)
+    test_model()
+    print(datetime.now() - start)

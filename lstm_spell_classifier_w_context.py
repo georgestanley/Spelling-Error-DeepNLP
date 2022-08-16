@@ -11,9 +11,10 @@ from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader, Dataset
 from utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
     f1_score_manual, str2bool
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
 import torch.distributed as dist
 
 all_letters = string.ascii_letters + " .,;'"
@@ -200,7 +201,7 @@ def convert_to_pytorch_dataset(train_data, val_data, batch_size):
                                   )
 
     val_dataset = MyDataset(val_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True, collate_fn=collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False, collate_fn=collate_fn)
 
     return train_dataloader, val_dataloader
 
@@ -229,7 +230,7 @@ def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
     correct = 0
     # model.train()
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, X_token = vectorize_data2(data, with_error=True)
+        X_vec, Y_vec, X_token = vectorize_data2(data, with_error=True, shuffle=True)
         X_vec = X_vec.to(device)
         # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
@@ -259,7 +260,6 @@ def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
 
 
 def val_model(val_loader, model, criterion, logger, writer, epoch):
-    # TODO: Improve this validation section
     correct = 0
     total = 0
     f1 = 0
@@ -272,7 +272,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     to_print = np.empty((1, 7))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, X_token = vectorize_data2(data, with_error=False)  # xx shape:
+            X_vec, Y_vec, X_token = vectorize_data2(data, with_error=False, shuffle=False)  # xx shape:
             X_vec = X_vec.to(device)
             # X_vec = torch.unsqueeze(X_vec, 1).requires_grad_()  # (n_words,228) --> (n_words , 1, 228)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
@@ -397,19 +397,26 @@ def binarize2(tokens, isLabelVector=False):
     bin_beg = [0] * len(alph)
     bin_middle = [0] * len(alph)
     bin_end = [0] * len(alph)
-
-    bin_beg[alph.index(tokens[0])] += 1
-    bin_end[alph.index(tokens[-1])] += 1
-
-    for i in range(1, len(tokens) - 1):
-        bin_middle[alph.index(tokens[i])] += 1
+    try:
+        bin_beg[alph.index(tokens[0])] += 1
+    except:
+        pass
+    try:
+        bin_end[alph.index(tokens[-1])] += 1
+    except:
+        pass
+    try:
+        for i in range(1, len(tokens) - 1):
+            bin_middle[alph.index(tokens[i])] += 1
+    except:
+        pass
 
     bin_all = bin_beg + bin_middle + bin_end
     bin.append(bin_all)
     return torch.tensor(bin)
 
 
-def vectorize_data2(data_arr, with_error):
+def vectorize_data2(data_arr, with_error, shuffle):
     '''
     Uses np broadcasting instead of earlier technique
     :param data_arr: ndarray (batch_len,6) ; e.g. [[['big' 'brother' 'ninetepn' 'eightyfour' 'big' '0']]]
@@ -437,12 +444,13 @@ def vectorize_data2(data_arr, with_error):
 
     # X_vec = torch.from_numpy(X_vec)
     # Y_vec = torch.from_numpy(Y)
-    r = torch.randperm(X_vec.size()[0])
-    X_vec = X_vec[r]
-    Y_vec = Y_vec[r]
+    if shuffle:
+        r = torch.randperm(X_vec.size()[0])
+        X_vec = X_vec[r]
+        Y_vec = Y_vec[r]
 
-    # X_token = np.asarray(X_token)
-    X_token = X_token[r]
+        # X_token = np.asarray(X_token)
+        X_token = X_token[r]
 
     return X_vec, Y_vec, X_token
 
@@ -556,6 +564,80 @@ def main(args, device):
     return
 
 
+def test_model():
+    PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
+
+    #val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
+
+    val_data = get_bea60_data(
+        os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
+    val_data = convert_to_numpy_valdata(val_data)
+    val_data = generate_N_grams_valdata(val_data)
+
+    _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
+    model, criterion, _ = initialize_model(hidden_dim=512,hidden_layers=2, lr=0.001, device= device)
+    model.load_state_dict(torch.load(PATH))
+    model.to(device)
+    model.eval()
+
+    print("Dataset size: {} samples".format(len(val_loader.dataset)))
+
+    correct = 0
+    total_loss = 0
+    total = 0
+    TN, FP, FN, TP = 0, 0, 0, 0
+
+    to_print = np.empty((1, 7))
+    with torch.no_grad():
+        for i, data in enumerate(val_loader):
+            X_vec, Y_vec, X_token = vectorize_data2(data, with_error=False, shuffle=False)  # xx shape:
+            X_vec = X_vec.to(device)
+            Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
+
+            outputs = model(X_vec)  # (n_words, 2)
+
+            _, predicted = torch.max(outputs.data, 1)
+            total += Y_vec.size(0)
+
+            loss = criterion(outputs, Y_vec)
+            correct += (predicted == Y_vec).sum()
+
+            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
+
+            c = collections.Counter(predicted.cpu().detach().numpy())
+            print(c)
+            batch_size = Y_vec.size(0)
+            total_loss += loss.item()
+
+            temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
+            to_print = np.row_stack((to_print, temp_to_print))
+
+        to_print = pd.DataFrame(to_print)
+        to_print.to_csv(os.path.join(args.model_folder, "data2.csv"))
+        # to_print.to_csv('data2.csv')
+        # mean_val_loss = total_loss / total
+        alpha = (len(val_loader.dataset)) / 1000
+        # alpha = 1000 / batch_size
+        mean_val_loss = total_loss / alpha
+        mean_val_accuracy = 100 * correct / total
+        f1 = f1_score_manual(TN, FP, FN, TP)
+        scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
+        disp = ConfusionMatrixDisplay(confusion_matrix= np.array([[TN, FP],[FN, TP]]))
+        disp.plot()
+        plt.show()
+
+    # accuracy = 100 * correct / total
+    print(scalar_dict)
+    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+
+    return mean_val_loss, mean_val_accuracy.cpu(), f1
+
+
+
 if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
@@ -565,5 +647,5 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     main(args, device)
-    # eval_model()
+    #test_model()
     print(datetime.now() - start)
