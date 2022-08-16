@@ -223,11 +223,20 @@ TODO: Add compute time and expense
 </tr>
 </table>
 
-
+<figure>
 <img src="cm_lstm_wo_context.png">
-<p align="center">Confusion Matrix for LSTM Without Context
+    <figcaption>Confusion Matrix for LSTM Without Context</figcaption>
+</figure>
+
+<figure>
 <img src="cm_lstm_w_context_ckpt43.png">
+    <figcaption>Confusion Matrix for LSTM With Context Semi Character</figcaption>
+</figure>
+
+<figure>
 <img src="cm_lstm_onehot_ckpt37.png">
+    <figcaption>Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
+</figure>
 </div>
 
 
