@@ -21,8 +21,8 @@ This project aims to detect spelling errors in a given sentence using a Deep Lea
 <li><a href="#div6">Dataset preparation</a>
 <li><a href="#div7">Training</a>
 <li><a href="#div8">Results</a>
-<li><a href="#div8">Observations</a>
-<li><a href="#div9">Problems and Future Improvements</a>
+<li><a href="#div9">Observations</a>
+<li><a href="#div10">Future Works</a>
 </ol>
 </div>
 <ol>
@@ -240,9 +240,18 @@ TODO: Add compute time and expense
 </div>
 
 
-<div id="div10">
-<li>Future Improvements:</li>
+<div id="div9">
+<li>Observations:</li>
+TBD
 </div>
+
+
+<div id="div10">
+<li>Future Works:</li>
+TBD
+</div>
+
+
 
 </ol>
 
