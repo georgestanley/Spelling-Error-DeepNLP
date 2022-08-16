@@ -15,16 +15,14 @@ This project aims to detect spelling errors in a given sentence using a Deep Lea
 <ol>
 <li><a href="#div1">Introduction</a>
 <li><a href="#div2">Problem Statement</a>
-<li><a href="#div3">Workflow</a>
-<li><a href="#div4">Data</a>
-<li><a href="#div5">Data Encoding</a>
-<li><a href="#div6">Models</a>
-<li><a href="#div7">Dataset preparation</a>
+<li><a href="#div3">Dataset</a>
+<li><a href="#div4">Data Encoding</a>
+<li><a href="#div5">Models</a>
+<li><a href="#div6">Dataset preparation</a>
+<li><a href="#div7">Training</a>
 <li><a href="#div8">Results</a>
-<li><a href="#div9">Additional Models</a>
-<li><a href="#div10">Problems and Future Improvements</a>
-<li><a href="#div11">Conclusion</a>
-<li><a href="#div12">Appendix</a>
+<li><a href="#div8">Observations</a>
+<li><a href="#div9">Problems and Future Improvements</a>
 </ol>
 </div>
 <ol>
@@ -42,7 +40,7 @@ Given a Sentence in English language as input, develop a program that tells whic
 </div>
 
 <br>
-<div id="div4">
+<div id="div3">
 <b><li>DATASETS</li> </b>
 In this project, we used two datasets for training and evaluation respectively. We decided to use two datasets so as to ensure our model has been able to generalise better instead of simply memorizing all words.
 <ol type="i">
@@ -65,11 +63,11 @@ It is a dataset collected by the team who developed the <a href="https://github.
 </ol>
 </div>
 
-<div id="div5"><li><b>Data Encoding</b></li>
+<div id="div4"><li><b>Data Encoding</b></li>
 An important task when working with textual data for a Deep Learning model (or any Machine Learning model) is to decide on the encoding technique. We need a mechanism by which we convey our textual data into a numerical format which our models can read and learn to optimise.
 As part of this project we experimented with two such encoding techniques as discussed below:
 <ol>
-<li>Semi-Character Vector</li>
+<li><b>Semi-Character Vector</b></li>
 This technique was introduced in the 2017 paper by Sakaguchi et. al in their paper titled <a href="https://arxiv.org/pdf/1608.02214.pdf">Robsut Wrod Reocginiton via Semi-Character Recurrent Neural Network</a>.
 Human beings often can understand word in a sentence even if a word is misspelled.Here the authors used on the research contducted by other Scientists to understand the level of difficulty faced by humans to decipher a word based on the position at which a spelling error occured in a word.
 
@@ -89,31 +87,29 @@ Refer the below figure for a sample word vector for the word 'Dictionary'.
 <img src="semi_character_example.png">
 <p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), we have a word vector of shape 5*156 which is passed as input to our model. 
 
-<li>Character level One-hot Encoding</li>
+<li><b>Character level One-hot Encoding</b></li>
 <p>One-hot encoding is often used in the field of Machine learning to encode categorical data into numerical data.It is a binary representation vector wherein a categorical class' index is assigned a positive value (1) and rest all indexes have a negative (0) value.
 <p>However, we can extend this concept further and use it to encode a Word at Character level where our Vocabulary set is made up of the alphabets of the language. This is same as the bn and en vectors created in section **.**.
 
 <p>So, considering the same five word sentence used for the Semi-Character example (i.e. My favourite dictionary is Oxford) , we will have a One-hot vector of shape 33*53 where 33 is lenght of the sentence and 53 is the length of the vocabulary.This means that every single character has a vector associated with it. In the vocabulary set we add an additional vector to account for Spaces in the sentence. Hence, the vocabulary length now becomes 52+1 = 53.
 
-<p>_Move this to another section_
-<p>As part of this project, we use mainly LSTM models. These models however cannot handle inputs of variable shapes. Hence, we need to fix the length of each input sentence to be of length 60.   
-
 
 
 </ol>
 </div>
-<div id="div6">Models
+
+<div id="div5"><li><b>Models:</b></li>
 As part of this project, we mainly used the LSTM networks for our analysis. Below we give a briefly introduce what are Recurrent Neural Networks (RNN) and LSTM networks.
 
 <ol>
-<li>Recurrent Neural Networks:</li>
+<li><b>Recurrent Neural Networks:</b></li>
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. They are typically as follows:
-<p>https://stanford.edu/~shervine/teaching/cs-230/illustrations/architecture-rnn-ltr.png?9ea4417fc145b9346a3e288801dbdfdc
+<img src="rnn_demo_stanford.png">
 <p> Copy the contents here from the above website.
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
 However, RNN networks also experience a phenomena known as exploding/vanishing gradient problem. It happens when the network finds it difficult to capture long term dependencies because of multiplicative gradient that can be exponentially decreasing/increasing with respect to the number of layers.
 
-<li>Long Short-term Memory:</li>
+<li><b>Long Short-term Memory:</b></li>
 LSTMs solve the problem of vanishing gradient by introducing gates inside the network that regulate the flow of information within a cell. Due to this, networks can now learn from sequences that are of longer length.
 
 </ol>
@@ -121,11 +117,11 @@ LSTMs solve the problem of vanishing gradient by introducing gates inside the ne
 <p><i>Note: The project began with experimenting on Multi-Layer Perceptrons (MLP) and Recurrent Neural Networks(RNN). Howoever, since the results in the initial stages were not very promising, we dedicated more focus towards LSTM networks. Hence, only LSTM evaluation results are listed below.</i>
 </div>
 
-<div id="div7">
-<li>Dataset Preparation:</li>
+<div id="div6">
+<li><b>Dataset Preparation:</b></li>
 <ul>
 <li>Training</li>
-Our experiments were focused on two angles: context based and non-context based. 
+Our experiments were focused on two angles: <b>context</b> based and <b>non-context</b> based. 
 As the name suggests, in the non-context based approach, the model is trained only on individual words. The input was not a sentence of words but just a single word.
 For the non-context based approach, the model was trained on words and the contextual words that appeared before and after it.
 For our experiments, the models were shown two context words before and after the target word. 
@@ -151,7 +147,8 @@ Samples without error: ****
 </ul>
 </div>
 
-<div id = "div9">Training: Prameters
+<div id = "div7">Training
+TODO: Add compute time and expense
 <table>
 <tr>
 <th></th>
@@ -168,7 +165,7 @@ Samples without error: ****
 </tr>
 
 <tr>
-<td>epoch</td>
+<td>Epochs</td>
 <td></td>
 <td></td>
 <td></td>
@@ -176,9 +173,9 @@ Samples without error: ****
 
 <tr>
 <td>Learning Rate</td>
-<td></td>
-<td></td>
-<td></td>
+<td>0.01</td>
+<td>0.001</td>
+<td>0.001</td>
 </tr>
 
 <tr>
@@ -198,8 +195,7 @@ Samples without error: ****
 </table>
 </div>
 
-<div id="div8">
-<li>Results:</li>
+<div id="div8"><li><b>Results:</b></li>
 <table>
 
 <tr>
@@ -229,14 +225,11 @@ Samples without error: ****
 
 
 <img src="cm_lstm_wo_context.png">
+<p align="center">Confusion Matrix for LSTM Without Context
 <img src="cm_lstm_w_context_ckpt43.png">
 <img src="cm_lstm_onehot_ckpt37.png">
 </div>
 
-
-<div id="div10">
-<li>Future Improvements:</li>
-</div>
 
 <div id="div10">
 <li>Future Improvements:</li>
