@@ -79,7 +79,9 @@ def remove_punctuation(texts):
 def check_sent_is_alpha(words):
 
     for word in words :
-        if re.match(r'^[A-Za-z0-9*]+$', word):
+        if word=='advertisment':
+            print(words)
+        if re.match(r'^[A-Za-z*]+$', word):
             #if word.isalpha() == False:
             return True
         else:
@@ -118,21 +120,21 @@ def main2():
                     #print(len(splitted_data[0]))
                     if j == 0:
                         # left side issue
-                        print(1)
+                        #print(1)
                         t_texts.append(["*","*", x_temp[j + 1-1], x_temp[j + 2-1], x_temp[j + 3-1]])
                         f_texts.append(["*","*", y_temp[j + 1-1], y_temp[j + 2-1], y_temp[j + 3-1]])
                     elif j == 1:
-                        print(2)
+                        #print(2)
                         t_texts.append(["*", x_temp[j-1], x_temp[j + 1-1], x_temp[j + 2-1], x_temp[j + 3-1]])
                         f_texts.append(["*", y_temp[j-1], y_temp[j + 1-1], y_temp[j + 2-1], y_temp[j + 3-1]])
 
                     elif j == len(x_temp) - 1:
-                        print(3)
+                        #print(3)
                         t_texts.append([x_temp[j - 1-1], x_temp[j-1], x_temp[j], "*","*"])
                         f_texts.append([y_temp[j - 1-1], y_temp[j-1], y_temp[j], "*","*"])
 
                     elif j == len(x_temp) - 2:
-                        print(4)
+                        #print(4)
                         t_texts.append([x_temp[j - 1-1], x_temp[j-1], x_temp[j+1-1], x_temp[j+1], "*"])
                         f_texts.append([y_temp[j - 1-1], y_temp[j-1], y_temp[j+1-1],y_temp[j+1],"*" ])
                 else:
@@ -149,9 +151,11 @@ def main2():
     truth_dict, false_dict = {}, {}
     for i, data in enumerate(zip(truth_texts, false_texts)):
         # print(i,data[0],data[1])
+        print(i,data)
+
         for j, x in enumerate(zip(data[0], data[1])):
-            print(len(truth_dict), len(false_dict), x[0], x[1])
-            print(' '.join(x[0]).isalpha())
+            #print(len(truth_dict), len(false_dict), x[0], x[1])
+            #print(' '.join(x[0]).isalpha())
 
             if check_sent_is_alpha(x[0]):
                 truth_dict[' '.join(x[0])] = 0

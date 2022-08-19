@@ -239,7 +239,7 @@ def convert_to_pytorch_dataset(train_data, val_data, batch_size):
     my_dataloader = DataLoader(my_dataset, batch_size=batch_size, shuffle=True)
 
     val_dataset = MyDataset(val_words, val_labels)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=False)
 
     return my_dataloader, val_dataloader
 

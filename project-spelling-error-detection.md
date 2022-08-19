@@ -237,18 +237,24 @@ TODO: Add compute time and expense
 <img src="cm_lstm_onehot_ckpt37.png">
     <figcaption>Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
 </figure>
+
+
+<p><b>Examples of Good and Bad evaluations:</b>
+TODO:
 </div>
+
+
 
 
 <div id="div9">
 <li>Observations:</li>
-TBD
+TODO
 </div>
 
 
 <div id="div10">
 <li>Future Works:</li>
-TBD
+TODO
 </div>
 
 
