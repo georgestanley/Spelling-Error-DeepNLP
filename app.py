@@ -14,6 +14,45 @@ import lstm_spell_classifier_wo_context
 app = Dash(__name__)
 
 
+def initialize_models():
+    device = 'cuda'
+    ###### LOAD THE MODELS ######
+
+    PATH_SEMI_CHARACTER = "D://Freiburg//MasterProject//results//lstm_context" \
+                          "//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
+    model_semi_character_w_context, _, _ = lstm_spell_classifier_w_context.initialize_model(hidden_dim=512,
+                                                                                            hidden_layers=2,
+                                                                                            lr=0.001,
+                                                                                            device=device)
+    model_semi_character_w_context.load_state_dict(torch.load(PATH_SEMI_CHARACTER))
+    model_semi_character_w_context.eval()
+
+    ######
+    PATH_ONE_HOT = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_" \
+                   "//20220721103824_models//ckpt_best_37.pth"
+
+    device = 'cuda'
+    model_one_hot, _, _ = lstm_spell_classifier_w_context_onehot.initialize_model(hidden_dim=512, hidden_layers=2,
+                                                                                  lr=0.001,
+                                                                                  device=device)
+    model_one_hot.load_state_dict(torch.load(PATH_ONE_HOT))
+    model_one_hot.eval()
+
+    ######
+    PATH_WO_CONTEXT = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models" \
+                      "//ckpt_best_47.pth "
+
+    device = 'cuda'
+    model_semi_character_wo_context, criterion, _ = lstm_spell_classifier_wo_context.initialize_model(n_hidden_layers=2,
+                                                                                                      hidden_dim=1024,
+                                                                                                      lr=0.01,
+                                                                                                      device=device)
+    model_semi_character_wo_context.load_state_dict(torch.load(PATH_WO_CONTEXT))
+    model_semi_character_wo_context.eval()
+
+    return device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context
+
+
 def convert_to_numpy_valdata(words):
     non_ascii_keys = []
     for x in words.keys():
@@ -74,15 +113,7 @@ def generate_N_grams(data):
     return new_dataset, labels
 
 
-def test_model_lstm_context_semi_character(data):
-    PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
-
-    device = 'cuda'
-    model, criterion, _ = lstm_spell_classifier_w_context.initialize_model(hidden_dim=512, hidden_layers=2, lr=0.001,
-                                                                           device=device)
-    model.load_state_dict(torch.load(PATH))
-    model.eval()
-
+def evaluate_lstm_context_semi_character(model, data , device = 'cuda'):
     val_data = {data: 0}
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams(val_data)
@@ -104,23 +135,12 @@ def test_model_lstm_context_semi_character(data):
             return error_words
 
 
-def test_model_lstm_context_one_hot(data):
-    PATH = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_" \
-           "//20220721103824_models//ckpt_best_37.pth"
-
-    device = 'cuda'
-    model, criterion, _ = lstm_spell_classifier_w_context_onehot.initialize_model(hidden_dim=512, hidden_layers=2,
-                                                                                  lr=0.001,
-                                                                                  device=device)
-    model.load_state_dict(torch.load(PATH))
-    model.eval()
-
+def evaluate_lstm_context_one_hot(model, data, device = 'cuda'):
     val_data = {data: 0}
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams_onehot(val_data)
     _, val_loader = lstm_spell_classifier_w_context_onehot.convert_to_pytorch_dataset(val_data, val_data,
                                                                                       batch_size=1000)
-
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             X_vec, Y_vec, sentence_length = lstm_spell_classifier_w_context_onehot.one_hot_encode_data(
@@ -143,17 +163,7 @@ def test_model_lstm_context_one_hot(data):
             return error_words
 
 
-def test_model_lstm_wo_context(data):
-    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models" \
-           "//ckpt_best_47.pth "
-
-    device = 'cuda'
-    model, criterion, _ = lstm_spell_classifier_wo_context.initialize_model(n_hidden_layers=2, hidden_dim=1024,
-                                                                            lr=0.01,
-                                                                            device=device)
-    model.load_state_dict(torch.load(PATH))
-    model.eval()
-
+def evaluate_lstm_wo_context(model, data, device = 'cuda'):
     # val_data = {data: 0}
     val_data = dict.fromkeys(data.split(), 0)
     val_data = lstm_spell_classifier_wo_context.convert_to_numpy_valdata(val_data)
@@ -178,10 +188,10 @@ def test_model_lstm_wo_context(data):
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Spelling Error Detection',  style={'textAlign': 'center'}),
+    html.H1(children='Spelling Error Detection', style={'textAlign': 'center'}),
     html.H3(children='Master Project by Stanley George', style={'textAlign': 'center'}),
 
-    dcc.Input(id='input_text', type='text', style={'width':'40%'}),
+    dcc.Input(id='input_text', type='text', style={'width': '40%'}),
     html.Button('Evaluate text', id='evaluate', n_clicks=0),
     html.Div(id='container-button-basic1',
              children=''),
@@ -189,7 +199,6 @@ app.layout = html.Div(children=[
              children=''),
     html.Div(id='container-button-basic3',
              children=''),
-
 ])
 
 
@@ -201,12 +210,16 @@ app.layout = html.Div(children=[
     State('input_text', 'value')
 )
 def update_output(n_clicks, value):
-    results1 = test_model_lstm_context_semi_character(value)
-    results2 = test_model_lstm_context_one_hot(value)
-    results3 = test_model_lstm_wo_context(value)
+
+    results1 = evaluate_lstm_context_semi_character(model=model_semi_character_w_context, data=value)
+    results2 = evaluate_lstm_context_one_hot(model=model_one_hot, data=value)
+    results3 = evaluate_lstm_wo_context(model=model_semi_character_wo_context, data=value)
 
     return results1, results2, results3
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context = initialize_models()
+    app.run_server(debug=False)
+
+    # test_model_lstm_context_semi_character('We need something concrete for the world')
