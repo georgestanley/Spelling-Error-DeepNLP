@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
     parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
+    parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')

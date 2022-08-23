@@ -28,12 +28,35 @@ svn linkl
 
       A table of the different input parameters that can be provided are listed in Section xx
 
-
    2. Evaluate of the test dataset.
+
+      Execute the same file as in step (i) except set the mode to `test`
+
+      `python -m application.lstm_spell_classifier_w_context --mode=test`
    3. Run all the Unit-tests.
+      
+      Execute the shell script which triggers all unit-test files as: `./application/run_tests.sh`
    4. Run individual unit-tests.
 
-5. GUI
+      All the uni-tests are in the application/tests folder. You can trigger them as below from the parent directory:
+   
+      `python -m application.tests.test_lstm_spell_classifier_w_context`
+
+6. GUI
+
+### Input Arguments
+
+| Name        | Datatype | Default Values<br/>Semi-Character with Context | Default Values<br/>Semi-Character without Context | Default Values<br/>One-hot encoded with context |
+|-------------|----------|------------------------------------------------|---------------------------------------------------|-------------------------------------------------|
+| data_folder | String   | data                                           |                                                   |                                                 |
+| output_root | String   |                                                |                                                   |                                                 |
+| input_file  | String   |                                                |                                                   |                                                 |
+| val_file    | String   |                                                |                                                   |                                                 |
+| epochs      | int      | 10                                             |                                                   |                                                 |
+| lr          | float    | 0.001                                          |                                                   |                                                 |
+| bs          |          |                                                |                                                   |                                                 |
+
+
 
 ### Directory Structure
 
