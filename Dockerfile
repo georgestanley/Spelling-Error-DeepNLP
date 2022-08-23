@@ -19,6 +19,7 @@ COPY application//Model.py application//Model.py
 COPY application//utils application//utils
 COPY application//tests application//tests
 COPY application//run_tests.sh application//run_tests.sh
+
 #COPY data/bea60k.repaired/ data/bea60k.repaired/
 #COPY data/bea60k.repaired.test/ data/bea60k.repaired.test/
 #COPY data/bea60k.repaired.val/ data/bea60k.repaired.val/
