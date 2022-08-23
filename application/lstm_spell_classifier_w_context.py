@@ -45,7 +45,6 @@ def parse_arguments():
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
     parser.add_argument('--mode', type=str, default='train',help="'Should be either of 'train' or 'test'")
-    parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
     hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
@@ -647,6 +646,11 @@ if __name__ == "__main__":
     print("LSTM Spelling Classifier with Context")
     print(vars(args))
     print()
-    main(args, device)
-    #test_model()
+    if args.mode == 'train':
+        main(args)
+    elif args.mode == 'test':
+        test_model()
+    else:
+        print('Unknown arg:mode. Defaulting to train mode...')
+        main(args)
     print(datetime.now() - start)

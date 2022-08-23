@@ -1,7 +1,7 @@
 # Spelling-Error-Detection
 
 Steps to reproduce:
-1. clone the Github / SVN repo
+1. Clone the Github / SVN repo
 ```
 git clone https://github.com/georgestanley/Spelling-Error
 
@@ -42,39 +42,49 @@ svn linkl
    
       `python -m application.tests.test_lstm_spell_classifier_w_context`
 
-6. GUI
+5. GUI
 
 ### Input Arguments
 
-| Name        | Datatype | Default Values<br/>Semi-Character with Context | Default Values<br/>Semi-Character without Context | Default Values<br/>One-hot encoded with context |
-|-------------|----------|------------------------------------------------|---------------------------------------------------|-------------------------------------------------|
-| data_folder | String   | data                                           |                                                   |                                                 |
-| output_root | String   |                                                |                                                   |                                                 |
-| input_file  | String   |                                                |                                                   |                                                 |
-| val_file    | String   |                                                |                                                   |                                                 |
-| epochs      | int      | 10                                             |                                                   |                                                 |
-| lr          | float    | 0.001                                          |                                                   |                                                 |
-| bs          |          |                                                |                                                   |                                                 |
-
+| Name            | Datatype | Default Values<br/>Semi-Character with Context | Default Values<br/>Semi-Character without Context        | Default Values<br/>One-hot encoded with context              |
+|-----------------|----------|------------------------------------------------|----------------------------------------------------------|--------------------------------------------------------------|
+| data_folder     | String   | data                                           | data                                                     | data                                                         |
+| output_root     | String   | results                                        | results                                                  | results                                                      |
+| input_file      | String   | dev_10.jsonl                                   | top_100_words.json                                       | dev_10.jsonl                                                 |
+| val_file        | String   | 'bea60k.repaired.val/bea60_sentences_val_truth_and_false.json| bea60k.repaired.val/bea60_words_val_truth_and_false.json | bea60k.repaired.val/bea60_sentences_val_truth_and_false.json |
+| epochs          | int      | 10                                             | 10                                                       | 10                                                           |
+| lr              | float    | 0.001                                          | 0.01                                                     | 0.001                                                        |
+| bs              | int      | 1000                                           | 1000                                                     | 32                                                           |
+| hidden_dim      | int      | 100                                            | 100                                                      | 100                                                          |
+| hidden_layers   | int      | 2                                              | 2                                                        | 2                                                            |
+| max_len         | int      | _NA_                                           | _NA_                                                     | 60                                                           |
+| lower_case_mode | bool     | False                                          | NA                                                       | False                                                        |
+| mode            | str      | train                                          | train                                                    | train                                                        |
 
 
 ### Directory Structure
 
 ```
 |-- Makefile
+|-- README.md
 |-- application
 |   |-- Model.py
 |   |-- __init__.py
 |   |-- lstm_spell_classifier_w_context.py
 |   |-- lstm_spell_classifier_w_context_onehot.py
 |   |-- lstm_spell_classifier_wo_context.py
-|   |-- requirements.txt
 |   |-- run_tests.sh
 |   |-- tests
 |   |-- utils
 |-- bashrc
 |-- data
-
-
+|   |-- bea60k.repaired.test
+|   |-- bea60k.repaired.val
+|   |-- top_all_words_over_100000_lowercase.json
+|   |-- top_all_words_over_200000.json
+|   |-- training_1000.jsonl
+|   |-- training_200000_lines.jsonl
+|   |-- training_5000.jsonl
+`-- requirements.txt
 
 ```

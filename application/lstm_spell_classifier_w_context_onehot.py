@@ -36,7 +36,7 @@ np.random.seed(0)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_folder', type=str, default='MasterProject\\application\\data', help="folder containing the data")
+    parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
@@ -50,9 +50,7 @@ def parse_arguments():
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
     parser.add_argument('--mode', type=str, default='train',help="'Should be either of 'train' or 'test'")
-    parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
-    parser.add_argument('--gpu_id',type=int,default=0,help="the gpu id at pool")
     args = parser.parse_args()
     hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
@@ -67,9 +65,7 @@ def parse_arguments():
 
 
 def get_wikipedia_text(file_name, lower_case):
-    '''
 
-    '''
     data = []
     with open(file_name, encoding="utf-8") as f:
         if lower_case:
@@ -104,20 +100,12 @@ def convert_to_numpy_valdata(words):
         del words[x]
 
     x1 = np.array(list(words.keys()))
-    # x2 = np.zeros(x1.size)
     x2 = np.array(list(words.values()))
-    x = np.column_stack((x1, x2))
     return (x1, x2)
 
 
-# @timeit
 def remove_punctuation(texts):
-    '''
 
-    :param text: String
-    :return: ans: String
-    '''
-    ans = ""
     stripPunct = str.maketrans('', '', string.punctuation)
     new = np.array([i.translate(stripPunct) for i in texts])
     return new
@@ -127,7 +115,6 @@ def cleanup_data(data):
     """
     Removes punctuations
     """
-    # data['text'] = data['text'].apply(lambda x: remove_punctuation(x))
     f = lambda x: remove_punctuation(x)
     data = f(data)
     return data
@@ -135,11 +122,12 @@ def cleanup_data(data):
 
 def generate_N_grams(data, ngram=5):
     """
-    Takes as input a Dataframe of texts.Breaks it into list of 5-grams inside a Dataframe
-    # label meanings:
-    # 0: no error in middle word
-    # 1: With error in middle word
+    Takes as input a text string.Breaks it into list of 5-grams
+    label meanings:
+    0: no error in middle word
+    1: With error in middle word
 
+    :returns new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
     """
 
     new_dataset = []
@@ -164,7 +152,6 @@ def generate_N_grams(data, ngram=5):
 
     new_dataset = np.array(new_dataset)
     labels = np.zeros(len(new_dataset))
-    # new_dataset : list(dataset_len) ;e.g.  'big brother nineteen eightyfour big'
 
     return new_dataset, labels  # new_dataset:
 
@@ -360,13 +347,9 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
 
 
 def val_model(val_loader, model, criterion, logger, writer, epoch):
-    # TODO: Improve this validation section
     correct = 0
-    total = 0
-    f1 = 0
 
     total_loss = 0
-    total_accuracy = 0
     total = 0
     TN, FP, FN, TP = 0, 0, 0, 0
     to_print = np.empty((1, 3))
@@ -386,7 +369,6 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
             try:
                 tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
                 TN += tn
@@ -417,8 +399,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
             f"total_samples={total}")
         save_in_log(writer, epoch, scalar_dict=scalar_dict)
-    # accuracy = 100 * correct / total
-    # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+
     return mean_val_loss, mean_val_accuracy.cpu(), f1
 
 
@@ -560,6 +541,11 @@ if __name__ == "__main__":
     print("LSTM Spelling Classifier with context -- One-Hot")
     print(vars(args))
     print()
-    main(args)
-    #evaluate()
+    if args.mode == 'train':
+        main(args)
+    elif args.mode == 'test':
+        evaluate()
+    else:
+        print('Unknown arg:mode. Defaulting to train mode...')
+        main(args)
     print(datetime.now() - start)
