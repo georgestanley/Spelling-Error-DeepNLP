@@ -36,6 +36,9 @@ def save_in_log(log, save_step, scalar_dict=None, text_dict=None, image_dict=Non
 
 
 def int2char(x):
+    """Given an integer between 0 and 25, returns the corresponding english alphabet of that position. Used in the
+            insert_errors function"""
+
     return alphabet_list[x]
 
 
@@ -56,6 +59,8 @@ def get_rand123():
 
 
 def check_dir(path):
+    '''Used to create directories to store training artifacts if  folder DNE.'''
+
     os.makedirs(path, exist_ok=True)
     return path
 
