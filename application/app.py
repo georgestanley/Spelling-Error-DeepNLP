@@ -205,14 +205,17 @@ app.layout = html.Div(children=[
     html.H1(children='Spelling Error Detection', style={'textAlign': 'center'}),
     html.H3(children='Master Project by Stanley George', style={'textAlign': 'center'}),
 
-    dcc.Input(id='input_text', type='text', style={'width': '40%'}),
-    html.Button('Evaluate text', id='evaluate', n_clicks=0),
-    html.Div(id='container-button-basic1',
-             children=''),
-    html.Div(id='container-button-basic2',
-             children=''),
-    html.Div(id='container-button-basic3',
-             children=''),
+    dcc.Input(id='input_text', type='text', style={'width': '70%'}),
+    html.Button('Evaluate text', id='evaluate', n_clicks=0,  style={'width': '20%'}),
+    html.Div(id='div1',children = [html.Div(id='div1a', children='Model 1:', style={'display':'inline-block'}), html.Div(id='container-button-basic1', children='', style={'display':'inline-block'})]),
+    html.Div(id='div2',children = [html.Div(id='div2a', children='Model 2:', style={'display':'inline-block'}), html.Div(id='container-button-basic2', children='', style={'display':'inline-block'})]),
+    html.Div(id='div3',children = [html.Div(id='div3a', children='Model 3:', style={'display':'inline-block'}), html.Div(id='container-button-basic3', children='', style={'display':'inline-block'})]),
+
+
+
+
+
+
 ])
 
 
@@ -228,7 +231,8 @@ def update_output(n_clicks, value):
     results2 = evaluate_lstm_context_one_hot(model=model_one_hot, data=value)
     results3 = evaluate_lstm_wo_context(model=model_semi_character_wo_context, data=value)
 
-    return results1, results2, results3
+
+    return ','.join(results1), ','.join(results2), ','.join(results3)
 
 
 def main():
@@ -278,10 +282,18 @@ if __name__ == '__main__':
     print('Initializing ...')
     device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context = initialize_models()
     args = parse_arguments()
+    # input("""
+    # Please Select your choice:\n
+    # 1. Evaluate the models in the console.\n
+    # 2. Evaluate the models inside a Webapp. \n
+    # 3. Load and Evaluate a text file. \n
+    # 4. Load and Evaluate your own model
+    # """)
+
     if args.mode == 'console':
         main()
     elif args.mode == 'webapp':
-        app.run_server(debug=False)
+        app.run_server(debug=True)
     elif args.mode == 'file_eval':
         file_eval()
     else:
