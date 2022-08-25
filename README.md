@@ -59,7 +59,7 @@ svn linkl
 | hidden_layers   | int      | 2                                              | 2                                                        | 2                                                            |
 | max_len         | int      | _NA_                                           | _NA_                                                     | 60                                                           |
 | lower_case_mode | bool     | False                                          | NA                                                       | False                                                        |
-| mode            | str      | train                                          | train                                                    | train                                                        |
+| mode            | String   | train                                          | train                                                    | train                                                        |
 
 
 ### Directory Structure

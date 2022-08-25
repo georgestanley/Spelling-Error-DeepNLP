@@ -6,7 +6,7 @@ LABEL maintainer="Stanley George <george@tf.uni-freiburg.de>"
 USER root
 RUN apt-get update
 RUN apt-get install -y make vim
-#RUN rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/*
 
 COPY Makefile Makefile
 COPY bashrc bashrc
