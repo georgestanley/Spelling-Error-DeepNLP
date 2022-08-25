@@ -1,5 +1,9 @@
 # Run this app with `python app.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
+import os
+
+import argparse
+
 import re
 
 import numpy as np
@@ -11,6 +15,15 @@ import application.lstm_spell_classifier_w_context as lstm_spell_classifier_w_co
     application.lstm_spell_classifier_wo_context as lstm_spell_classifier_wo_context
 
 app = Dash(__name__)
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str,
+                        help="console OR webapp")
+    args = parser.parse_args()
+
+    return args
 
 
 def initialize_models():
@@ -49,6 +62,7 @@ def initialize_models():
     model_semi_character_wo_context.load_state_dict(torch.load(PATH_WO_CONTEXT))
     model_semi_character_wo_context.eval()
 
+    print('All Models Imported')
     return device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context
 
 
@@ -125,12 +139,12 @@ def evaluate_lstm_context_semi_character(model, data, device='cuda'):
             X_vec = X_vec.to(device)
             outputs = model(X_vec)  # (n_words, 2)
             _, predicted = torch.max(outputs.data, 1)
-            print(outputs.data, predicted, X_token)
+            #print(outputs.data, predicted, X_token)
             l = predicted.tolist()
             indexes = [i for i, x in enumerate(l) if x == 1]
             error_grams = X_token[indexes]
             error_words = [x[2] for x in error_grams]
-            print("Error Words = ", error_words)
+            #print("Error Words = ", error_words)
             return error_words
 
 
@@ -139,7 +153,8 @@ def evaluate_lstm_context_one_hot(model, data, device='cuda'):
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams_onehot(val_data)
     _, val_loader = lstm_spell_classifier_w_context_onehot.convert_to_pytorch_dataset(val_data, val_data,
-                                                                                      batch_size=1000, val_shuffle=False)
+                                                                                      batch_size=1000,
+                                                                                      val_shuffle=False)
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             X_vec, Y_vec, sentence_length = lstm_spell_classifier_w_context_onehot.one_hot_encode_data(
@@ -151,14 +166,14 @@ def evaluate_lstm_context_one_hot(model, data, device='cuda'):
             outputs = model(X_vec, sent_len)  # (n_words, 2)
 
             _, predicted = torch.max(outputs.data, 1)
-            print(outputs.data, predicted)
+            #print(outputs.data, predicted)
             l = predicted.tolist()
             indexes = [i for i, x in enumerate(l) if x == 1]
             d = np.array(list(data[0]))
-            print(d)
+            #print(d)
             error_grams = d[indexes]
             error_words = [x.split()[2] for x in error_grams]
-            print("Error Words = ", error_words)
+            #print("Error Words = ", error_words)
             return error_words
 
 
@@ -177,12 +192,12 @@ def evaluate_lstm_wo_context(model, data, device='cuda'):
             outputs = model(X_vec)  # (n_words, 2)
 
             _, predicted = torch.max(outputs.data, 1)
-            print(outputs.data, predicted, X_token)
+            #print(outputs.data, predicted, X_token)
             l = predicted.tolist()
             indexes = [i for i, x in enumerate(l) if x == 1]
             error_grams = X_token[indexes]
             error_words = [x[0] for x in error_grams]
-            print("Error Words = ", error_words)
+            #print("Error Words = ", error_words)
             return error_words
 
 
@@ -216,8 +231,60 @@ def update_output(n_clicks, value):
     return results1, results2, results3
 
 
+def main():
+    print('Model 1 ==>(Semi-Character-Encoding / With Context)')
+    print('Model 2 ==>(One-hot-Encoding / With Context)')
+    print('Model 3 ==>(Semi-Character-Encoding / Without Context)')
+    while True:
+        print('')
+        value = input('Sentence to evaluate:')
+        results1 = evaluate_lstm_context_semi_character(model=model_semi_character_w_context, data=value)
+        results2 = evaluate_lstm_context_one_hot(model=model_one_hot, data=value)
+        results3 = evaluate_lstm_wo_context(model=model_semi_character_wo_context, data=value)
+        print('Model 1 :', results1)
+        print('Model 2 :', results2)
+        print('Model 3 :', results3)
+    pass
+
+
+def extract_data_from_file(file_path):
+    with open(file_path) as f:
+        lines = f.read()
+        #print(lines)
+        return lines
+    pass
+
+def file_eval():
+    print('Model 1 ==>(Semi-Character-Encoding / With Context)')
+    print('Model 2 ==>(One-hot-Encoding / With Context)')
+    print('Model 3 ==>(Semi-Character-Encoding / Without Context)')
+    while True:
+        file_path = input('Please provide the file path. Kindly provide on .txt files:')
+        if (os.path.exists(file_path)):
+            value = extract_data_from_file(file_path)
+            results1 = evaluate_lstm_context_semi_character(model=model_semi_character_w_context, data=value)
+            results2 = evaluate_lstm_context_one_hot(model=model_one_hot, data=value)
+            results3 = evaluate_lstm_wo_context(model=model_semi_character_wo_context, data=value)
+            print('Model 1 :', results1)
+            print('Model 2 :', results2)
+            print('Model 3 :', results3)
+        else:
+            print('Please provide valid file path')
+
+    pass
+
+
 if __name__ == '__main__':
+    print('Initializing ...')
     device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context = initialize_models()
-    app.run_server(debug=False)
+    args = parse_arguments()
+    if args.mode == 'console':
+        main()
+    elif args.mode == 'webapp':
+        app.run_server(debug=False)
+    elif args.mode == 'file_eval':
+        file_eval()
+    else:
+        print('Please select between \'console\' OR \'webapp\' OR \'file_eval\' ')
 
     # test_model_lstm_context_semi_character('We need something concrete for the world')

@@ -7,7 +7,8 @@ torch.manual_seed(0)
 np.random.seed(0)
 
 from application.app import convert_to_numpy_valdata, generate_N_grams, generate_N_grams_onehot, \
-    evaluate_lstm_context_semi_character, evaluate_lstm_context_one_hot, evaluate_lstm_wo_context
+    evaluate_lstm_context_semi_character, evaluate_lstm_context_one_hot, evaluate_lstm_wo_context, \
+    extract_data_from_file
 
 from application.lstm_spell_classifier_w_context import initialize_model as initialize_semi_character_w_context
 from application.lstm_spell_classifier_w_context_onehot import initialize_model as initialize_one_hot
@@ -112,6 +113,12 @@ class Test_dash_app(TestCase):
 
         pass
 
+    def test_extract_data_from_file(self):
+        file_path = 'application//tests/file_for_evaluation.txt'
+        data = extract_data_from_file(file_path)
+        self.assertEqual(data,'We like the fashion stores in Berlin. Can we find a frend who is so faithful ?')
+
+        pass
     def test_update_output(self):
         "Due to the design limitation of the dash app, we can't create a test function for it."
         pass
