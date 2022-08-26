@@ -15,6 +15,7 @@ COPY application//__init__.py application//__init__.py
 COPY application//lstm_spell_classifier_wo_context.py application//lstm_spell_classifier_wo_context.py
 COPY application//lstm_spell_classifier_w_context.py  application//lstm_spell_classifier_w_context.py
 COPY application//lstm_spell_classifier_w_context_onehot.py application//lstm_spell_classifier_w_context_onehot.py
+COPY application//app.py application//app.py
 COPY application//Model.py application//Model.py
 COPY application//utils application//utils
 COPY application//tests application//tests

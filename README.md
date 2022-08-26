@@ -5,20 +5,21 @@ Steps to reproduce:
 ```
 git clone https://github.com/georgestanley/Spelling-Error
 
-svn linkl
+svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
+
 ```
 2. Go to the respective working branch
 3. Create a docker image by the following steps:
    1. Build the Image:
    
-       ```docker build -t spelling-error-detection .```
+       ```docker build -t stanley-george-project .```
    2. Run the container. Here we also have to mount the datasets folder if one is interested in training on the complete dataset.
 
-        ```docker run -it --name spelling-error-detection -v /nfs/students/stanley-george/data:/app/data/ spelling-dummy```
+        ```docker run -it --gpus=all --name stanley-george-project -v /nfs/students/stanley-george/data:/app/data/ stanley-george-project```
    
    **Note**: To remove an existing image with the same name, use the command:
         
-   ```docker rm spelling-error-detection```
+   ```docker rm stanley-george-project```
 4. Now that code and data is in place, let's try them:
    1. Train a spell-classifier (from `application` folder).
 
