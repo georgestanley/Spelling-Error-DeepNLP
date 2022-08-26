@@ -12,7 +12,7 @@ start_app_console:
 	python -m application.app --mode=console
 
 start_app_webapp:
-    python -m application.app --mode=webapp
+	python -m application.app --mode=webapp
 
 start_app_file_eval:
-    python -m application.app --mode=file_eval
+	python -m application.app --mode=file_eval
