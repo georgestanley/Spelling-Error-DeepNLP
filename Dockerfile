@@ -22,6 +22,7 @@ COPY application//tests application//tests
 COPY application//run_tests.sh application//run_tests.sh
 COPY README.md .
 RUN chmod +x application//run_tests.sh
+EXPOSE 8050
 
 #COPY data/bea60k.repaired/ data/bea60k.repaired/
 #COPY data/bea60k.repaired.test/ data/bea60k.repaired.test/

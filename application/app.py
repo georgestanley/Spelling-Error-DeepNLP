@@ -21,12 +21,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, help="console OR webapp")
     parser.add_argument('--model1_path', type=str,
-                        default='application//data//trained_models//semi_character_w_context.pth',
+                        default='data//trained_models//semi_character_w_context.pth',
                         help='trained Model 1 ==> Semi-Character-Encoding / With Context')
-    parser.add_argument('--model2_path', type=str, default='application//data//trained_models//onehot_w_context.pth',
+    parser.add_argument('--model2_path', type=str, default='data//trained_models//onehot_w_context.pth',
                         help='trained Model 2 ==> One-hot-Encoding / With Context')
     parser.add_argument('--model3_path', type=str,
-                        default='application//data//trained_models//semi_character_wo_context.pth',
+                        default='data//trained_models//semi_character_wo_context.pth',
                         help='trained Model 3 ==> Semi-Character-Encoding / Without Context')
     args = parser.parse_args()
 
@@ -290,18 +290,10 @@ if __name__ == '__main__':
     print('Initializing ...')
     args = parse_arguments()
     device, model_semi_character_w_context, model_one_hot, model_semi_character_wo_context = initialize_models()
-    # input("""
-    # Please Select your choice:\n
-    # 1. Evaluate the models in the console.\n
-    # 2. Evaluate the models inside a Webapp. \n
-    # 3. Load and Evaluate a text file. \n
-    # 4. Load and Evaluate your own model
-    # """)
-
     if args.mode == 'console':
         main()
     elif args.mode == 'webapp':
-        app.run_server(debug=True)
+        app.run_server(debug=False)
     elif args.mode == 'file_eval':
         file_eval()
     else:
