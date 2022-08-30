@@ -321,7 +321,6 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
         sent_len = torch.tensor(sentence_length, device=device)
         #print("X_vec shape after:",X_vec.shape)
 
-
         outputs = model(X_vec, sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len) , output: Tensor(batch_len,
         loss = criterion(outputs, Y_vec)
         _, predicted = torch.max(outputs.data, 1)
@@ -361,8 +360,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
             sent_len = torch.tensor(sentence_length, device=device)
-
-            outputs = model(X_vec, sent_len)  # (n_words, 2)
+            outputs = model(X_vec, sent_len)  # (n_words, 2)/
             # Get predictions from the maximum value
             _, predicted = torch.max(outputs.data, 1)
             total += Y_vec.size(0)

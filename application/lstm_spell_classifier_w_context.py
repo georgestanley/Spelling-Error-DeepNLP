@@ -647,7 +647,7 @@ if __name__ == "__main__":
     print(vars(args))
     print()
     if args.mode == 'train':
-        main(args)
+        main(args, device)
     elif args.mode == 'test':
         test_model()
     else:
