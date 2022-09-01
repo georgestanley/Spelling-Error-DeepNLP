@@ -84,7 +84,7 @@ In case of (a), the INTernal words were swapped whereas in (b) the ENDing charac
 <p>We use this principle to construct a word vector which is made up of three sub-vectors (bn, in, en) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. They are same as the one-hot representations.
 The second sub-vector _in_ represents the character count of each word except the first and last word.
 Refer the below figure for a sample word vector for the word 'Dictionary'.
-<img src="semi_character_example.png">
+<img src="assets/semi_character_example.png">
 <p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), we have a word vector of shape 5*156 which is passed as input to our model. 
 
 <li><b>Character level One-hot Encoding</b></li>
@@ -104,7 +104,7 @@ As part of this project, we mainly used the LSTM networks for our analysis. Belo
 <ol>
 <li><b>Recurrent Neural Networks:</b></li>
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. They are typically as follows:
-<img src="rnn_demo_stanford.png">
+<img src="assets/rnn_demo_stanford.png">
 <p> Copy the contents here from the above website.
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
 However, RNN networks also experience a phenomena known as exploding/vanishing gradient problem. It happens when the network finds it difficult to capture long term dependencies because of multiplicative gradient that can be exponentially decreasing/increasing with respect to the number of layers.
@@ -131,7 +131,7 @@ For our experiments, the models were shown two context words before and after th
 <p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 1000 wikipedia articles. The final dataset contained ******** 5-gram pairs.
 
 <p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig 1). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
-<img src="img_1.png">
+<img src="assets/img_1.png">
 
 <li>Evaluation:</li>
 The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. So,the final dataset size was
@@ -193,6 +193,12 @@ TODO: Add compute time and expense
 </tr>
 
 </table>
+
+<img src="assets/train_loss.png">
+<img src="assets/val_loss.png">
+<img src="assets/val_acc.png">
+<img src="assets/val_f1.png">
+
 </div>
 
 <div id="div8"><li><b>Results:</b></li>
@@ -224,17 +230,17 @@ TODO: Add compute time and expense
 </table>
 
 <figure>
-<img src="cm_lstm_wo_context.png">
+<img src="assets/cm_lstm_wo_context.png">
     <figcaption>Confusion Matrix for LSTM Without Context</figcaption>
 </figure>
 
 <figure>
-<img src="cm_lstm_w_context_ckpt43.png">
+<img src="assets/cm_lstm_w_context_ckpt43.png">
     <figcaption>Confusion Matrix for LSTM With Context Semi Character</figcaption>
 </figure>
 
 <figure>
-<img src="cm_lstm_onehot_ckpt37.png">
+<img src="assets/cm_lstm_onehot_ckpt37.png">
     <figcaption>Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
 </figure>
 
