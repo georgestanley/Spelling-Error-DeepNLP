@@ -195,10 +195,6 @@ TODO: Add compute time and expense
 </table>
 
 <img src="assets/pic_all_graphs.png">
-<img src="assets/train_loss.png">
-<img src="assets/val_loss.png">
-<img src="assets/val_acc.png">
-<img src="assets/val_f1.png">
 
 </div>
 
