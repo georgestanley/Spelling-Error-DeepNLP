@@ -249,6 +249,8 @@ def main():
     while True:
         print('')
         value = input('Sentence to evaluate:')
+        if value.strip() == '':
+            continue
         results1 = evaluate_lstm_context_semi_character(model=model_semi_character_w_context, data=value)
         results2 = evaluate_lstm_context_one_hot(model=model_one_hot, data=value)
         results3 = evaluate_lstm_wo_context(model=model_semi_character_wo_context, data=value)

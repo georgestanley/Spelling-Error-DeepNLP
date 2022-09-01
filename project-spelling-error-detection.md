@@ -251,13 +251,33 @@ TODO:
 
 <div id="div9">
 <li>Observations:</li>
-TODO
+<ul>
+<li><b>Does Context really Matter ?</b></li>As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. However, let us compare some examples from the test set.
+TODO: Find examples from test set where Context was +ve but w/o context was -ve
+<li><b>One-hot encoded vectors are faster</b></li>
+A closer look at the training plots placed in <a href="#div8">Section 8</a> shows the orange line reaching better metric levels faster than the semi-character encodings. A possible reason for lies in the underlying concept of one-hot vectors. ????
+<li><b>The Case matters</b></li>At the beginning of writing my code, I was under the assumption that the models would be happy with just the spellings. But just a trial of removing the .lower() function resulted in a huge spike in the validation accuracy (~10%).  
+</ul>
 </div>
 
 
 <div id="div10">
-<li>Future Works:</li>
-TODO
+<li>The Million Dollar Question</li>
+<b>Will I use this spell-checker for the next big revolutionary Word Processing Software?</b>
+Let's discuss some advantages of these models:
+<ul>
+<li>It can detect spelling errors</li>
+<li>For context-based models, in many situations, it highlights error words which aren't error but hinting towards a grammatical mistake or a missing filler word.</li> 
+Now, what are some problems:
+<li>It produces False-Positives.<i>(mostly prevalent in the context-based approach)</i> </li>
+<li>The one-hot model classifies the first word mostly as Positive</li>
+<li>IT doesn't consider punctuations.</li>
+</ul>
+What can be done to make it better:
+<ul>
+<li>Train on a more bigger dataset.</li>
+<li>Expand the alphabet to wisely include punctuations as part of the context.</li>
+</ul>
 </div>
 
 
