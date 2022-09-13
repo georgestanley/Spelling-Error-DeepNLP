@@ -18,6 +18,7 @@ COPY application//Model.py application//Model.py
 COPY application//utils application//utils
 COPY application//tests application//tests
 COPY application//run_tests.sh application//run_tests.sh
+COPY trained_models trained_models
 COPY README.md .
 RUN chmod +x application//run_tests.sh
 EXPOSE 8050
