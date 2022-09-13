@@ -502,7 +502,6 @@ def insert_errors(data):  #
 
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
-    print(x)
     data = np.concatenate((data, x))
     # print('data shape after ', np.shape(data))
     return data
@@ -570,11 +569,13 @@ def main(args, device):
 
 def test_model():
     PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
+    #TODO: Change path as args parameter
 
     # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
     val_data = get_bea60_data(
         os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
+    #TODO: change this too..
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams_valdata(val_data)
 
