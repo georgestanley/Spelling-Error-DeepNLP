@@ -120,35 +120,99 @@ LSTMs solve the problem of vanishing gradient by introducing gates inside the ne
 <div id="div6">
 <li><b>Dataset Preparation:</b></li>
 <ul>
+<p>
 <li>Training</li>
 Our experiments were focused on two angles: <b>context</b> based and <b>non-context</b> based. 
 As the name suggests, in the non-context based approach, the model is trained only on individual words. The input was not a sentence of words but just a single word.
 For the non-context based approach, the model was trained on words and the contextual words that appeared before and after it.
 For our experiments, the models were shown two context words before and after the target word. 
-<p>Example: In the sentence <i>We need <b>suffcient</b> carbohydrates in our body </i> , for the target word sufficient, the input sentence would be  <i>We need <b>suffcient</b> carbohydrates in </i> i.e. the two sequential words before and after the target.
+<p>Example: In the sentence <i style="color:green">We need <b style="color:red">suffcient</b> carbohydrates in our body </i> , for the target word 
+<b style="color:red">sufficient</b>, the input sentence would be  <i style="color:green">We need <b style="color:red">suffcient</b> carbohydrates in </i> i.e. the two sequential words before and after the target.
 
-<p>For the non-context based approach, we extracted all the individual words from Wikipedia articles and filtered out the words which occurred more than 20 times. This additional filtering had to be done to remove words that were misspelt or words that occured very rarely in the encyclopedia. The final dataset contained ****** words.
-<p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 1000 wikipedia articles. The final dataset contained ******** 5-gram pairs.
+<p>For the non-context based approach, we extracted all the individual words from Wikipedia articles and filtered out the words which occurred more than 20 times. This additional filtering had to be done to remove words that were misspelt or words that occured very rarely in the encyclopedia. The final training dataset contained 1,47,011 words.
+<p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 5000 wikipedia articles. The final dataset contained 17,43,076 5-gram pairs.
 
 <p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig 1). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
 <img src="assets/img_1.png">
 
-<li>Evaluation:</li>
-The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. So,the final dataset size was
-Validation set: ******
-Samples with error: ****
-Samples without error: *****
+<li>Real-time Error generation:</li>
+<p>Since we are following a Supervised learning approach, our models need to be trained to distinguish between Positive and Negative Samples by having training it on Positive and Negative Samples.
+However, we assume that our dataset is a clean dataset i.e. without any errors. Hence, we introduce errors manually during the training epochs.
+</p>
 
-Test Set: ****
-Samples with error: ****
-Samples without error: ****
-
-
+<p>We introduce randomly either of the below three error on the target word:
+<ul>
+<li>Replace a character with another random character</li>
+<li>Introduce an extra character at a random position </li>
+<li>Remove a character from a random position</li>
 </ul>
+
+Because of this, in every epoch, the network sees a different negative word thereby avoiding a possible overfitting.
+
+<li>Evaluation:</li>
+<p>
+The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. 
+So,the final dataset size was
+
+
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-46ru{background-color:#96fffb;border-color:inherit;text-align:left;vertical-align:top}
+.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+.tg .tg-fymr{border-color:inherit;font-weight:bold;text-align:left;vertical-align:top}
+.tg .tg-elvq{background-color:#fffc9e;border-color:inherit;text-align:left;vertical-align:top}
+</style>
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky"></th>
+    <th class="tg-fymr">Samples With Error</th>
+    <th class="tg-fymr">Samples Without Error</th>
+    <th class="tg-fymr">Total Samples</th>
+    <th class="tg-0pky"></th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-fymr" rowspan="2">Context-Based (i.e. Sentences)</td>
+    <td class="tg-46ru">10,865</td>
+    <td class="tg-46ru">10,781</td>
+    <td class="tg-46ru">21,646</td>
+    <td class="tg-46ru">Validation Set</td>
+  </tr>
+  <tr>
+    <td class="tg-elvq">11,220</td>
+    <td class="tg-elvq">11,202</td>
+    <td class="tg-elvq">22,422</td>
+    <td class="tg-elvq">Test Set</td>
+  </tr>
+  <tr>
+    <td class="tg-fymr" rowspan="2">Non-Context (i.e. Words)</td>
+    <td class="tg-46ru">13,899</td>
+    <td class="tg-46ru">6,384</td>
+    <td class="tg-46ru">20,283</td>
+    <td class="tg-46ru">Validation Set</td>
+  </tr>
+  <tr>
+    <td class="tg-elvq">14,299</td>
+    <td class="tg-elvq">6,671</td>
+    <td class="tg-elvq">20,970</td>
+    <td class="tg-elvq">Test Set</td>
+  </tr>
+</tbody>
+</table>
+</ul>
+
 </div>
 
-<div id = "div7">Training
-TODO: Add compute time and expense
+<div id = "div7"><li><b>Training:</b></li>
+The models were trained on 4 Nvidia Titan X (Pascal) GPUs. The below table lists some of the important hyperparameters used during the training.
+
+
 <table>
 <tr>
 <th></th>
@@ -192,6 +256,20 @@ TODO: Add compute time and expense
 <td>Cross Entropy Loss</td>
 </tr>
 
+<tr>
+<td>Training time(per Epoch)</td>
+<td>1 min</td>
+<td>16 min</td>
+<td>20 min</td>
+</tr>
+
+<tr>
+<td>Dataset Size</td>
+<td>~150k words </td>
+<td>5000 Wikipedia articles</td>
+<td>5000 Wikipedia articles</td>
+</tr>
+
 </table>
 
 <img src="assets/pic_all_graphs.png">
@@ -199,6 +277,7 @@ TODO: Add compute time and expense
 </div>
 
 <div id="div8"><li><b>Results:</b></li>
+The table below shows the accuracy that was achieved on the test dataset and the corresponding F1 Score. Further we also have plotted the Confusion Matrix for the same dataset. lIt is clearly evident that Context based models outperfom non-context based model.  
 <table>
 
 <tr>
@@ -226,10 +305,10 @@ TODO: Add compute time and expense
 </tr>
 </table>
 
-<figure>
-<img src="assets/cm_lstm_wo_context.png">
+
+<img src="assets/cm_lstm_wo_context.png" style="align-content: center">
     <figcaption>Confusion Matrix for LSTM Without Context</figcaption>
-</figure>
+
 
 <figure>
 <img src="assets/cm_lstm_w_context_ckpt43.png">
@@ -242,12 +321,58 @@ TODO: Add compute time and expense
 </figure>
 
 
+
 <p><b>Examples of Good and Bad evaluations:</b>
-TODO:
+
+<table>
+<tr>
+<td>Test Sentence:</td> 
+<td>The quick brown fox jumps Over the lazy dog</td>
+</tr>
+
+<tr>
+<td>LSTM with context (Semi-Character)</td> 
+<td>fox</td>
+</tr>
+
+<tr>
+<td>LSTM with context (One-hot)</td> 
+<td>The,quick,fox</td>
+</tr>
+
+<tr>
+<td>LSTM without context<</td> 
+<td>over</td>
+</tr>
+
+</table>
+
+Another Example:
+
+<table>
+<tr>
+<td>Test Sentence:</td> 
+<td>An impartial invstigation into the crash was conducted by the agency</td>
+</tr>
+
+<tr>
+<td>LSTM with context (Semi-Character)</td> 
+<td>invstigation</td>
+</tr>
+
+<tr>
+<td>LSTM with context (One-hot)</td> 
+<td>An,impartial,invstigation</td>
+</tr>
+
+<tr>
+<td>LSTM without context<</td> 
+<td>invstigation,was</td>
+</tr>
+
+</table>
+
 </div>
-
-
-
 
 <div id="div9">
 <li>Observations:</li>

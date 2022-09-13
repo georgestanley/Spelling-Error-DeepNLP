@@ -316,7 +316,10 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             correct += (predicted == Y_vec).sum()
 
             # f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            try:
+                tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
             TN += tn
             FP += fp
             FN += fn
@@ -431,7 +434,10 @@ def test_model():
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            try:
+                tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
             TN += tn
             FP += fp
             FN += fn

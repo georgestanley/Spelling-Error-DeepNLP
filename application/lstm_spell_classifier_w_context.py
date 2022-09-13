@@ -32,7 +32,7 @@ np.random.seed(0)
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_folder', type=str, default='MasterProject\\application\\data', help="folder containing the data")
+    parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
     parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
@@ -44,7 +44,7 @@ def parse_arguments():
     parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
-    parser.add_argument('--mode', type=str, default='train',help="'Should be either of 'train' or 'test'")
+    parser.add_argument('--mode', type=str, default='train', help="'Should be either of 'train' or 'test'")
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
     hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
@@ -286,16 +286,19 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            f1 = f1_score(predicted.cpu(), Y_vec.cpu())
-            x = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
-            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            # f1 = f1_score(predicted.cpu(), Y_vec.cpu())
+            # x = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            try:
+                tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
             TN += tn
             FP += fp
             FN += fn
             TP += tp
 
-            c = collections.Counter(predicted.cpu().detach().numpy())
-            print(c)
+            # c = collections.Counter(predicted.cpu().detach().numpy())
+            # print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 
@@ -499,6 +502,7 @@ def insert_errors(data):  #
 
     x2 = np.ones((len(temp)))
     x = np.column_stack((temp, x2))
+    print(x)
     data = np.concatenate((data, x))
     # print('data shape after ', np.shape(data))
     return data
@@ -524,7 +528,7 @@ def main(args, device):
     # dataz = np.load(os.path.join(args.data_folder, args.input_file))
     # data = (dataz['arr_0'], dataz['arr_1'])
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
-    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim,hidden_layers=args.hidden_layers,lr=args.lr,
+    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim, hidden_layers=args.hidden_layers, lr=args.lr,
                                                device=device)
     # model = nn.DataParallel(model)
 
@@ -567,7 +571,7 @@ def main(args, device):
 def test_model():
     PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
 
-    #val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
+    # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
     val_data = get_bea60_data(
         os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
@@ -575,7 +579,7 @@ def test_model():
     val_data = generate_N_grams_valdata(val_data)
 
     _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
-    model, criterion, _ = initialize_model(hidden_dim=512,hidden_layers=2, lr=0.001, device= device)
+    model, criterion, _ = initialize_model(hidden_dim=512, hidden_layers=2, lr=0.001, device=device)
     model.load_state_dict(torch.load(PATH))
     model.to(device)
     model.eval()
@@ -602,14 +606,17 @@ def test_model():
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            try:
+                tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
             TN += tn
             FP += fp
             FN += fn
             TP += tp
 
-            c = collections.Counter(predicted.cpu().detach().numpy())
-            print(c)
+            # c = collections.Counter(predicted.cpu().detach().numpy())
+            # print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 
@@ -617,7 +624,7 @@ def test_model():
             to_print = np.row_stack((to_print, temp_to_print))
 
         to_print = pd.DataFrame(to_print)
-        to_print.to_csv(os.path.join(args.model_folder, "data2.csv"))
+        to_print.to_csv(os.path.join(args.model_folder, "test_output_semi_character_context.csv"))
         # to_print.to_csv('data2.csv')
         # mean_val_loss = total_loss / total
         alpha = (len(val_loader.dataset)) / 1000
@@ -626,16 +633,15 @@ def test_model():
         mean_val_accuracy = 100 * correct / total
         f1 = f1_score_manual(TN, FP, FN, TP)
         scalar_dict = {'Loss/val': mean_val_loss, 'Accuracy/val': mean_val_accuracy, 'F1_score/f1': f1}
-        disp = ConfusionMatrixDisplay(confusion_matrix= np.array([[TN, FP],[FN, TP]]))
+        disp = ConfusionMatrixDisplay(confusion_matrix=np.array([[TN, FP], [FN, TP]]))
         disp.plot()
         plt.show()
 
     # accuracy = 100 * correct / total
     print(scalar_dict)
-    #save_in_log(writer, epoch, scalar_dict=scalar_dict)
+    # save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy.cpu(), f1
-
 
 
 if __name__ == "__main__":

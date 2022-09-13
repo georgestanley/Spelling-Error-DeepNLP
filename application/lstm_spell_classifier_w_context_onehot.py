@@ -49,7 +49,7 @@ def parse_arguments():
     parser.add_argument('--maxlen', type=int, default=60, help='the max length of words in a single seq')
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
-    parser.add_argument('--mode', type=str, default='train',help="'Should be either of 'train' or 'test'")
+    parser.add_argument('--mode', type=str, default='train', help="'Should be either of 'train' or 'test'")
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
     hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
@@ -65,7 +65,6 @@ def parse_arguments():
 
 
 def get_wikipedia_text(file_name, lower_case):
-
     data = []
     with open(file_name, encoding="utf-8") as f:
         if lower_case:
@@ -105,7 +104,6 @@ def convert_to_numpy_valdata(words):
 
 
 def remove_punctuation(texts):
-
     stripPunct = str.maketrans('', '', string.punctuation)
     new = np.array([i.translate(stripPunct) for i in texts])
     return new
@@ -140,7 +138,7 @@ def generate_N_grams(data, ngram=5):
         text = text.split()
         text[:] = [tup for tup in text if tup.isalpha()]
         text[:] = [tup for tup in text if tup.isascii()]
-        #text = ['*','*'] + text + ['*','*']
+        # text = ['*','*'] + text + ['*','*']
         for i in range(0, len(text) - ngram + 1):
             x = []
             for j in range(5):
@@ -173,7 +171,7 @@ def generate_N_grams_valdata(data):
 def convert_to_pytorch_dataset(train_data, val_data, batch_size, val_shuffle=True):
     train_dataset = MyDataset(train_data)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False,
-                                  #num_workers=0, pin_memory=True
+                                  # num_workers=0, pin_memory=True
                                   )
 
     val_dataset = MyDataset(val_data)
@@ -267,6 +265,7 @@ def insert_errors(data):  #
     data = list(data) + temp
     return data, labels
 
+
 def char_index(character):
     try:
         return alph.index(character)
@@ -276,7 +275,7 @@ def char_index(character):
 
 
 def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
-    new_dataset =data
+    new_dataset = data
     maxlen = maxlen
     if with_error:
         new_dataset, labels = insert_errors(new_dataset)
@@ -301,11 +300,12 @@ def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
         new_dataset = new_dataset[r]
         labels = labels[r]
         #arr_len = arr_len[r] # TODO: fix this
+        arr_len = torch.tensor(arr_len)[r].tolist()
 
     return new_dataset, labels, arr_len
 
 
-def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
+def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
     total_loss = 0
     total_accuracy = 0
     total = 0
@@ -313,15 +313,17 @@ def train_model(train_loader, model, criterion, optim, writer, epoch,logger):
     # model.train()
 
     for i, data in enumerate(tqdm(train_loader)):
-        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=True,labels=data[1], shuffle=True, maxlen=args.maxlen)
+        X_vec, Y_vec, sentence_length = one_hot_encode_data(data=data[0], with_error=True, labels=data[1], shuffle=True,
+                                                            maxlen=args.maxlen)
         X_vec = X_vec.type(torch.FloatTensor).to(device)
         Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
         optim.zero_grad()
-        #print("X_vec shape before:",X_vec.shape)
+        # print("X_vec shape before:",X_vec.shape)
         sent_len = torch.tensor(sentence_length, device=device)
-        #print("X_vec shape after:",X_vec.shape)
+        # print("X_vec shape after:",X_vec.shape)
 
-        outputs = model(X_vec, sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len) , output: Tensor(batch_len,
+        outputs = model(X_vec,
+                        sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len) , output: Tensor(batch_len,
         loss = criterion(outputs, Y_vec)
         _, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()
@@ -356,7 +358,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
     with torch.no_grad():
         for i, data in enumerate(val_loader):
             # data = next(iter(val_loader))
-            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False, maxlen=args.maxlen)
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]), with_error=False, labels=data[1],
+                                                                shuffle=False, maxlen=args.maxlen)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
             sent_len = torch.tensor(sentence_length, device=device)
@@ -369,15 +372,16 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
 
             try:
                 tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
-                TN += tn
-                FP += fp
-                FN += fn
-                TP += tp
-            except Exception as e:
-                print('CM error', e)
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
 
-            c = collections.Counter(predicted.cpu().detach().numpy())
-            #logger.info(c)
+            TN += tn
+            FP += fp
+            FN += fn
+            TP += tp
+
+            # c = collections.Counter(predicted.cpu().detach().numpy())
+            # logger.info(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 
@@ -385,7 +389,7 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
             to_print = np.row_stack((to_print, temp_to_print))
 
         to_print = pd.DataFrame(to_print)
-        to_print.to_csv(os.path.join(args.output_folder,'data2.csv'))
+        to_print.to_csv(os.path.join(args.output_folder, 'data2.csv'))
         # mean_val_loss = total_loss / total
         alpha = (len(val_loader.dataset)) / batch_size
         # alpha = 1000 / batch_size
@@ -417,7 +421,8 @@ def main(args):
     # val_data = cleanup_data(val_data)
     val_data = generate_N_grams_valdata(val_data)
     train_loader, val_loader = convert_to_pytorch_dataset(train_data, val_data, batch_size=args.bs)
-    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim,hidden_layers=args.hidden_layers,lr=args.lr,device=device)
+    model, criterion, optim = initialize_model(hidden_dim=args.hidden_dim, hidden_layers=args.hidden_layers, lr=args.lr,
+                                               device=device)
 
     expdata = "  \n".join(["{} = {}".format(k, v) for k, v in vars(args).items()])
 
@@ -432,7 +437,7 @@ def main(args):
     train_losses, val_losses, val_accuracies, val_f1s = [0.0], [0.0], [0.0], [0.0]
     for epoch in range(n_epoch):
 
-        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch,logger)
+        train_loss, train_acc = train_model(train_loader, model, criterion, optim, writer, epoch, logger)
         val_loss, val_acc, val_f1 = val_model(val_loader, model, criterion, logger, writer, epoch)
 
         logger.info(f'Epoch{epoch}')
@@ -463,9 +468,11 @@ def eval_model(val_loader, model, criterion):
     total_loss = 0
     total = 0
     TN, FP, FN, TP = 0, 0, 0, 0
+    to_print = np.empty((1, 3))
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]),with_error=False, labels=data[1], shuffle=False, maxlen=args.maxlen)
+            X_vec, Y_vec, sentence_length = one_hot_encode_data(data=list(data[0]), with_error=False, labels=data[1],
+                                                                shuffle=False, maxlen=args.maxlen)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
             outputs = model(X_vec, sentence_length)  # (n_words, 2)
@@ -475,23 +482,26 @@ def eval_model(val_loader, model, criterion):
             loss = criterion(outputs, Y_vec)
             correct += (predicted == Y_vec).sum()
 
-            c = collections.Counter(predicted.cpu().detach().numpy())
-            tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            # c = collections.Counter(predicted.cpu().detach().numpy())
+            try:
+                tn, fp, fn, tp = confusion_matrix(predicted.cpu(), Y_vec.cpu()).ravel()
+            except ValueError:
+                tn, fp, fn, tp = 0, 0, 0, 0
             TN += tn
             FP += fp
             FN += fn
             TP += tp
 
-            print(c)
+            # print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 
-            #temp_to_print = np.column_stack((X_token, Y_vec.cpu(), predicted.cpu()))
-            #to_print = np.row_stack((to_print, temp_to_print))
+            temp_to_print = np.column_stack((data[0], Y_vec.cpu(), predicted.cpu()))
+            to_print = np.row_stack((to_print, temp_to_print))
 
-        #to_print = pd.DataFrame(to_print)
-        #to_print.to_csv('data2.csv')
-        #mean_val_loss = total_loss / total
+        to_print = pd.DataFrame(to_print)
+        to_print.to_csv(os.path.join(args.output_folder, 'test_output_onehot.csv'))
+        # mean_val_loss = total_loss / total
         alpha = (len(val_loader.dataset)) / 1000
         mean_val_loss = total_loss / alpha
         mean_val_accuracy = 100 * correct / total
@@ -505,10 +515,8 @@ def eval_model(val_loader, model, criterion):
 
 
 def evaluate():
-
     PATH = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220721103824_models//ckpt_best_37.pth"
-    #model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
-
+    # model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
 
     val_data = get_bea60_data(
         os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
@@ -517,8 +525,7 @@ def evaluate():
     val_data = generate_N_grams_valdata(val_data)
     _, val_loader = convert_to_pytorch_dataset(val_data, val_data, batch_size=args.bs)
 
-
-    model, criterion, optim = initialize_model(hidden_dim=512, hidden_layers=2, lr=0.001,device='cuda')
+    model, criterion, optim = initialize_model(hidden_dim=512, hidden_layers=2, lr=0.001, device='cuda')
     model.load_state_dict(torch.load(PATH))
     model.to(device)
     model.eval()
@@ -535,7 +542,7 @@ if __name__ == "__main__":
     start = datetime.now()
     args = parse_arguments()
     device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
-    #print(f"running on {device}")
+    # print(f"running on {device}")
     print("LSTM Spelling Classifier with context -- One-Hot")
     print(vars(args))
     print()

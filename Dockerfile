@@ -1,6 +1,4 @@
-#FROM ubuntu:20.04
 FROM anibali/pytorch:1.11.0-cuda11.5-ubuntu20.04
-#FROM anibali/pytorch:1.8.1-cuda11.1-ubuntu20.04
 LABEL maintainer="Stanley George <george@tf.uni-freiburg.de>"
 #RUN apt-get update && apt-get install -y make vim && rm -rf /var/lib/apt/lists/*
 USER root

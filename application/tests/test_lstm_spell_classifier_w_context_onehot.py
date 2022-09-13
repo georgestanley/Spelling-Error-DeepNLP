@@ -149,6 +149,7 @@ class Test_lstm_w_context_onehot(TestCase):
         torch.testing.assert_close(op[0][0][49],torch.tensor(1)) #x
         torch.testing.assert_close(op[0][1][76],torch.tensor(1)) #(space)
         torch.testing.assert_close(op[0][2][49],torch.tensor(1)) #x
+        self.assertEqual(arr_len,[14,14,15,13])
         self.assertEqual(op.shape,torch.Size([4,60,77]))
         pass
 
