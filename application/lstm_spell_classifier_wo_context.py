@@ -11,11 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 from .Model import LSTMModel
 import sys, random
 from tqdm import tqdm
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+from torch.utils.data import TensorDataset, DataLoader
 from .utils.utils import get_rand01, check_dir, int2char, get_logger, get_rand123, save_in_log, plot_graphs, \
     f1_score_manual
-# import wandb
-from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
+
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from datetime import datetime
 
 all_letters = string.ascii_letters + " .,;'"
@@ -43,7 +43,13 @@ def parse_arguments():
     parser.add_argument('--optim', type=str, default="Adam", help="optimizer to use")
     parser.add_argument('--hidden_dim', type=int, default=100, help='LSTM hidden layer Dim')
     parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
-    parser.add_argument('--mode', type=str, default='train',help="'Should be either of 'train' or 'test'")
+
+    # TEST args
+    parser.add_argument('--mode', type=str, default='train', help="'Should be either of 'train' or 'test'")
+    parser.add_argument('--eval_model_path', type=str, default='trained_models/semi_character_wo_context.pth')
+    parser.add_argument('--eval_file', type=str, help='the test file inside the data_folder',
+                        default='bea60k.repaired.test//bea60_words_test_truth_and_false.json')
+
     parser.add_argument('--snapshot-freq', type=int, default=1, help='how often to save models')
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
@@ -399,10 +405,10 @@ def main(args):
 
 def test_model():
     PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models//ckpt_best_47.pth"
-
+    PATH = args.eval_model_path
     # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
-    val_data = get_wikipedia_words(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_words_test_truth_and_false.json'))
+    val_data = get_wikipedia_words(os.path.join(args.data_folder, args.eval_file))
     # This function is also compatible with BEA-60k words dataset. So no function has been reused
     val_data = convert_to_numpy_valdata(val_data)
 
@@ -443,8 +449,8 @@ def test_model():
             FN += fn
             TP += tp
 
-            c = collections.Counter(predicted.cpu().detach().numpy())
-            print(c)
+            #c = collections.Counter(predicted.cpu().detach().numpy())
+            #print(c)
             batch_size = Y_vec.size(0)
             total_loss += loss.item()
 

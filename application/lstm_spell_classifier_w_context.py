@@ -8,14 +8,13 @@ from torch import nn
 from .Model import LSTMModel
 import sys
 from tqdm import tqdm
-from torch.utils.data import TensorDataset, DataLoader, Dataset
+from torch.utils.data import TensorDataset, DataLoader
 from .utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
     f1_score_manual, str2bool
-from sklearn.metrics import f1_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
-import torch.distributed as dist
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -35,7 +34,8 @@ def parse_arguments():
     parser.add_argument('--data_folder', type=str, default='data', help="folder containing the data")
     parser.add_argument('--output_root', type=str, default='results')
     parser.add_argument('--input_file', type=str, default='dev_10.jsonl')
-    parser.add_argument('--val_file', type=str, default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
+    parser.add_argument('--val_file', type=str, help='the Validation file inside the data_folder',
+                        default='bea60k.repaired.val/bea60_sentences_val_truth_and_false.json')
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--bs', type=int, default=1000, help='batch_size')
@@ -44,10 +44,15 @@ def parse_arguments():
     parser.add_argument('--hidden_layers', type=int, default=2, help='the number of hidden LSTM layers')
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
+    # TEST args
     parser.add_argument('--mode', type=str, default='train', help="'Should be either of 'train' or 'test'")
+    parser.add_argument('--eval_model_path', type=str, default='trained_models/semi_character_w_context.pth')
+    parser.add_argument('--eval_file', type=str, help='the test file inside the data_folder',
+                        default='bea60k.repaired.test//bea60_sentences_test_truth_and_false.json')
+
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
-    hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
+    hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]
     args.exp_name = "_".join(["{}{}".format(k, getattr(args, k)) for k in hparam_keys])
 
     args.exp_name += "_{}".format(args.exp_suffix)
@@ -569,13 +574,12 @@ def main(args, device):
 
 def test_model():
     PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
-    #TODO: Change path as args parameter
+    PATH = args.eval_model_path
 
     # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
     val_data = get_bea60_data(
-        os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
-    #TODO: change this too..
+        os.path.join(args.data_folder, args.eval_file))
     val_data = convert_to_numpy_valdata(val_data)
     val_data = generate_N_grams_valdata(val_data)
 
@@ -626,8 +630,6 @@ def test_model():
 
         to_print = pd.DataFrame(to_print)
         to_print.to_csv(os.path.join(args.model_folder, "test_output_semi_character_context.csv"))
-        # to_print.to_csv('data2.csv')
-        # mean_val_loss = total_loss / total
         alpha = (len(val_loader.dataset)) / 1000
         # alpha = 1000 / batch_size
         mean_val_loss = total_loss / alpha
@@ -659,5 +661,5 @@ if __name__ == "__main__":
         test_model()
     else:
         print('Unknown arg:mode. Defaulting to train mode...')
-        main(args)
+        main(args, device)
     print(datetime.now() - start)

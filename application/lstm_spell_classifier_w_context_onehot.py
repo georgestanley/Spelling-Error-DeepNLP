@@ -49,7 +49,12 @@ def parse_arguments():
     parser.add_argument('--maxlen', type=int, default=60, help='the max length of words in a single seq')
     parser.add_argument('--lower_case_mode', type=str2bool, default=False,
                         help="run experiments in lower case")
+    # TEST args
     parser.add_argument('--mode', type=str, default='train', help="'Should be either of 'train' or 'test'")
+    parser.add_argument('--eval_model_path', type=str, default='trained_models/onehot_w_context.pth')
+    parser.add_argument('--eval_file', type=str, help='the test file inside the data_folder',
+                        default='bea60k.repaired.test//bea60_sentences_test_truth_and_false.json')
+
     parser.add_argument('--exp-suffix', type=str, default="", help="string to identify the experiment")
     args = parser.parse_args()
     hparam_keys = ["lr", "bs", "optim", "hidden_dim", "hidden_layers"]  # changed from loss to size
@@ -299,7 +304,6 @@ def one_hot_encode_data(data, with_error, labels, shuffle, maxlen):
         r = torch.randperm(new_dataset.size()[0])
         new_dataset = new_dataset[r]
         labels = labels[r]
-        #arr_len = arr_len[r] # TODO: fix this
         arr_len = torch.tensor(arr_len)[r].tolist()
 
     return new_dataset, labels, arr_len
@@ -462,9 +466,6 @@ def main(args):
 
 def eval_model(val_loader, model, criterion):
     correct = 0
-
-    f1 = 0
-
     total_loss = 0
     total = 0
     TN, FP, FN, TP = 0, 0, 0, 0
@@ -515,11 +516,13 @@ def eval_model(val_loader, model, criterion):
 
 
 def evaluate():
-    PATH = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220721103824_models//ckpt_best_37.pth"
+    # PATH = "results//lstm_context_onehot//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_
+    # //20220721103824_models//ckpt_best_37.pth"
+    PATH = args.eval_model_path
     # model = LSTMModelForOneHotEncodings(input_dim=77, hidden_dim=512, layer_dim=2, output_dim=2, device='cuda:0')
 
     val_data = get_bea60_data(
-        os.path.join(args.data_folder, 'bea60_sentences_test_truth_and_false.json'))
+        os.path.join(args.data_folder, args.eval_file))
     val_data = convert_to_numpy_valdata(val_data)
     # val_data = cleanup_data(val_data)
     val_data = generate_N_grams_valdata(val_data)
