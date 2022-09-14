@@ -180,7 +180,7 @@ def convert_to_pytorch_dataset(train_data, val_data, batch_size, val_shuffle=Tru
                                   )
 
     val_dataset = MyDataset(val_data)
-    val_dataloader = DataLoader(val_dataset, batch_size=1000, shuffle=val_shuffle,
+    val_dataloader = DataLoader(val_dataset, batch_size=300, shuffle=val_shuffle,
                                 # collate_fn=collate_fn
                                 )
 
@@ -476,7 +476,8 @@ def eval_model(val_loader, model, criterion):
                                                                 shuffle=False, maxlen=args.maxlen)
             X_vec = X_vec.type(torch.FloatTensor).to(device)
             Y_vec = torch.squeeze(Y_vec).type(torch.LongTensor).to(device)
-            outputs = model(X_vec, sentence_length)  # (n_words, 2)
+            sent_len = torch.tensor(sentence_length, device=device)
+            outputs = model(X_vec, sent_len)  # (n_words, 2)
 
             _, predicted = torch.max(outputs.data, 1)
             total += Y_vec.size(0)

@@ -69,7 +69,7 @@ class Test_lstm_w_context(TestCase):
 
     def test_initialize_model(self):
 
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model, criterion, optimizer = initialize_model(hidden_dim=100, hidden_layers=2, lr=0.001, device=device)
         self.assertIsInstance(model, torch.nn.parallel.DataParallel)
         self.assertIsInstance(criterion, torch.nn.modules.loss.CrossEntropyLoss)
@@ -122,7 +122,7 @@ class Test_lstm_w_context(TestCase):
         np.testing.assert_array_equal(insert_errors(dataset_old), dataset_new)
 
     def test_get_bea60_data(self):
-        test_file_path = 'application\\tests\\bea60k_sentences_test_file.json'
+        test_file_path = 'application/tests/bea60k_sentences_test_file.json'
 
         dataset_new = {"WANT TO THANK YOU FOR": 0,
                        "In our Academy we are": 0,
@@ -164,11 +164,6 @@ class Test_lstm_w_context(TestCase):
         self.assertEqual(generate_N_grams_valdata(dataset_old)[0], dataset_new[0])
         np.testing.assert_array_equal(generate_N_grams_valdata(dataset_old)[1], dataset_new[1])
 
-    def test_train_model(self):
-        pass
-
-    def test_val_model(self):
-        pass
 
 
 if __name__ == '__main__':

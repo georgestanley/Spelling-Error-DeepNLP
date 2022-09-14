@@ -67,6 +67,7 @@ class LSTMModelForOneHotEncodings(nn.Module):
     def forward(self, x, sequence_lengths):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
+        print(x.shape)
         self.lstm.flatten_parameters()  # https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506#
 
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)

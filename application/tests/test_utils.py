@@ -5,6 +5,7 @@ import unittest
 import shutil
 import os
 from unittest import TestCase
+from pathlib import Path
 
 
 class Test_lstm_w_context_onehot(TestCase):
@@ -26,7 +27,9 @@ class Test_lstm_w_context_onehot(TestCase):
         pass
 
     def test_check_dir(self):
-        shutil.rmtree('temp_dir')  # remove the directory if exists. Only for testing purpose
+        dirpath = Path('temp_dir')
+        if dirpath.exists():
+            shutil.rmtree('temp_dir')  # remove the directory if exists. Only for testing purpose
         self.assertEqual(check_dir('temp_dir'), 'temp_dir')
         pass
 

@@ -121,13 +121,13 @@ class Test_lstm_w_context_onehot(TestCase):
 
 
     def test_initialize_model(self):
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model, criterion, optimizer = initialize_model(hidden_dim=100, hidden_layers=2, lr=0.001, device=device)
         self.assertIsInstance(model, torch.nn.parallel.DataParallel)
         self.assertIsInstance(criterion, torch.nn.modules.loss.CrossEntropyLoss)
         self.assertIsInstance(optimizer, torch.optim.Adam)
-
-        output = model(torch.rand(61, 60,77), [10]*61)
+        sent_len = torch.tensor([10]*61).to(device)
+        output = model(torch.rand(61, 60,77), sent_len)
         self.assertEqual(output.shape, torch.Size([61, 2]))
 
     def test_insert_errors(self):
@@ -149,7 +149,7 @@ class Test_lstm_w_context_onehot(TestCase):
         torch.testing.assert_close(op[0][0][49],torch.tensor(1)) #x
         torch.testing.assert_close(op[0][1][76],torch.tensor(1)) #(space)
         torch.testing.assert_close(op[0][2][49],torch.tensor(1)) #x
-        self.assertEqual(arr_len,[14,14,15,13])
+        self.assertEqual(arr_len,[15, 13, 14, 14])
         self.assertEqual(op.shape,torch.Size([4,60,77]))
         pass
 

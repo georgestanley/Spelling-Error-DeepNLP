@@ -21,12 +21,12 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, help="console OR webapp")
     parser.add_argument('--model1_path', type=str,
-                        default='data//trained_models//semi_character_w_context.pth',
+                        default='trained_models//semi_character_w_context.pth',
                         help='trained Model 1 ==> Semi-Character-Encoding / With Context')
-    parser.add_argument('--model2_path', type=str, default='data//trained_models//onehot_w_context.pth',
+    parser.add_argument('--model2_path', type=str, default='trained_models//onehot_w_context.pth',
                         help='trained Model 2 ==> One-hot-Encoding / With Context')
     parser.add_argument('--model3_path', type=str,
-                        default='data//trained_models//semi_character_wo_context.pth',
+                        default='trained_models//semi_character_wo_context.pth',
                         help='trained Model 3 ==> Semi-Character-Encoding / Without Context')
     args = parser.parse_args()
 
