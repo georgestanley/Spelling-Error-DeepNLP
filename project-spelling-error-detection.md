@@ -249,13 +249,6 @@ The models were trained on 4 Nvidia Titan X (Pascal) GPUs. The below table lists
 </tr>
 
 <tr>
-<td>Epochs</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-
-<tr>
 <td>Learning Rate</td>
 <td>0.01</td>
 <td>0.001</td>
@@ -361,7 +354,7 @@ The table below shows the accuracy that was achieved on the test dataset and the
 </tr>
 
 <tr>
-<td>LSTM without context<</td> 
+<td>LSTM without context</td> 
 <td>over</td>
 </tr>
 
