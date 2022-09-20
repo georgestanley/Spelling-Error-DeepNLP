@@ -22,7 +22,7 @@ This project aims to detect spelling errors in a given sentence using a Deep Lea
 <li><a href="#div7">Training</a>
 <li><a href="#div8">Results</a>
 <li><a href="#div9">Observations</a>
-<li><a href="#div10">Future Works</a>
+<li><a href="#div11">The Million Dollar Question</a>
 </ol>
 </div>
 <ol>
@@ -386,7 +386,7 @@ Another Example:
 </tr>
 
 <tr>
-<td>LSTM without context<</td> 
+<td>LSTM without context</td> 
 <td>invstigation,was</td>
 </tr>
 
@@ -397,35 +397,48 @@ Another Example:
 <div id="div9">
 <li>Observations:</li>
 <ul>
-<li><b>Does Context really Matter ?</b></li>As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. However, let us compare some examples from the test set.
-TODO: Find examples from test set where Context was +ve but w/o context was -ve
+<li><b>Does Context really Matter ?</b></li>
+As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. 
+However, let us compare some examples from the test dataset.
+<p>Consider the incorrectly spelt word understant. The Non-context classifier classified it as Negative (i.e. no error detected). 
+However, when passed as a contextual sentence 'We dont understant each other', the Semi-Character Classifer classifier it as Positive whereas the one-hot based classifier classified it as Negative.
+<p>Similarly, the word 'appresiate'. The non-context classifier classified it as Negative. However, both the Context based classifier classified it as Positive when provided the context sentence as 'I really appresiate my host'.
+
 <li><b>One-hot encoded vectors are faster</b></li>
-A closer look at the training plots placed in <a href="#div8">Section 8</a> shows the orange line reaching better metric levels faster than the semi-character encodings. A possible reason for lies in the underlying concept of one-hot vectors. ????
-<li><b>The Case matters</b></li>At the beginning of writing my code, I was under the assumption that the models would be happy with just the spellings. But just a trial of removing the .lower() function resulted in a huge spike in the validation accuracy (~10%).  
+A closer look at the training plots placed in <a href="#div8">Section 8</a> shows the orange line reaching better metric levels faster than the semi-character encodings. 
+A possible reason for lies in the underlying concept of one-hot vectors. These vectors are simly sentences encoded character to character in a machine readable format. 
+So, on one hand, the semi-character encoding was a special kind of algorithm which the model took time to learn but once it understood the encoding, it started producing good results.
+One-hot encoding on the other hand didn't employ a special encoding technique. So the model learnt faster the expense of compute time and large memory usage.
+
+<li><b>The Case matters</b></li>At the beginning of writing my code, I was under the assumption that the models would be happy with just the spellings. 
+But just a trial of removing the .lower() function resulted in a huge spike in the validation accuracy (~10%).
+Hence, any spelling detection model should be provided the actual case in which it was written.
+
 </ul>
 </div>
 
-
-<div id="div10">
-<li>The Million Dollar Question</li>
-<b>Will I use this spell-checker for the next big revolutionary Word Processing Software?</b>
+<div id="div11">
+<li><b>The Million Dollar Question</b></li>
+<p><b><i>Will I use my spell-checker for my next big revolutionary Word Processing Software?</i></b></p>
 Let's discuss some advantages of these models:
 <ul>
 <li>It can detect spelling errors</li>
-<li>For context-based models, in many situations, it highlights error words which aren't error but hinting towards a grammatical mistake or a missing filler word.</li> 
-Now, what are some problems:
+<li>For context-based models, in many situations, it highlights error words which aren't error but hinting towards a grammatical mistake or a missing filler word.</li>
+</ul>
+
+Now, what are some of the major problems:
+<ul>
 <li>It produces False-Positives.<i>(mostly prevalent in the context-based approach)</i> </li>
 <li>The one-hot model classifies the first word mostly as Positive</li>
-<li>IT doesn't consider punctuations.</li>
+<li>It doesn't consider punctuations.</li>
 </ul>
 What can be done to make it better:
 <ul>
 <li>Train on a more bigger dataset.</li>
 <li>Expand the alphabet to wisely include punctuations as part of the context.</li>
+<li>A closer look at the results of the test dataset showed some scenarios where only either  of the model was correct. Maybe an ensemble based approach might work here.  </li>
 </ul>
 </div>
-
-
 
 </ol>
 
