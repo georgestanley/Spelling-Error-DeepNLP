@@ -89,7 +89,10 @@ Thus we see that the beginning letter and the ending letter have more importance
 <p>We use this principle to construct a word vector which is made up of three sub-vectors (bn, in, en) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. They are same as the one-hot representations.
 The second sub-vector _in_ represents the character count of each word except the first and last word.
 Refer the below figure for a sample word vector for the word 'Dictionary'.
+<figure>
 <img src="assets/semi_character_example.png">
+<figcaption>An example of the Semi-Character Vector for the word Dictionary</figcaption>
+</figure>
 <p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
 we have a word vector of shape 5* 156 (5 words * (bn+in+en)) which is passed as input to our model. 
 
@@ -112,9 +115,9 @@ As part of this project, we mainly used the LSTM networks for our analysis. Belo
 <ol>
 <li><b>Recurrent Neural Networks:</b></li>
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. They are typically as follows:
-<figure>
+<figure style="align-content: center">
 <img src="assets/rnn_demo_stanford.png">
-<figcaption>Fig 1: An example of the Semi-Character Vector for the word Dictionary</figcaption>
+<figcaption style="align-content: center">Fig 2:A block diagram of a generic RNN network</figcaption>
 </figure>
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
 However, RNN networks also experience a phenomena known as exploding/vanishing gradient problem. It happens when the network finds it difficult to capture long term dependencies because of multiplicative gradient that can be exponentially decreasing/increasing with respect to the number of layers.
@@ -152,7 +155,7 @@ For our experiments, the models were shown two context words before and after th
 <p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig 1). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
 <img src="assets/img_1.png">
 
-<li>Real-time Error generation:</li>
+<li><b>Real-time Error generation:</b></li>
 <p>Since we are following a Supervised learning approach, our models need to be trained to distinguish between Positive and Negative Samples by having training it on Positive and Negative Samples.
 However, we assume that our dataset is a clean dataset i.e. without any errors. Hence, we introduce errors manually during the training epochs.
 </p>
@@ -166,7 +169,7 @@ However, we assume that our dataset is a clean dataset i.e. without any errors. 
 
 Because of this, in every epoch, the network sees a different negative word thereby avoiding a possible overfitting.
 
-<li>Evaluation:</li>
+<li><b>Evaluation:</b></li>
 <p>
 The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. 
 So,the final dataset size was
@@ -323,7 +326,7 @@ The table below shows the accuracy that was achieved on the test dataset and the
 </table>
 
 
-<img src="assets/cm_lstm_wo_context.png" style="align-content: center">
+<img src="assets/cm_lstm_wo_context.png" >
     <figcaption>Confusion Matrix for LSTM Without Context</figcaption>
 
 
