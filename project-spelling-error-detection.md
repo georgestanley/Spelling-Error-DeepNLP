@@ -398,7 +398,7 @@ Another Example:
 <li>Observations:</li>
 <ul>
 <li><b>Does Context really Matter ?</b></li>
-As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. 
+<p>As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. 
 However, let us compare some examples from the test dataset.
 <p>Consider the incorrectly spelt word understant. The Non-context classifier classified it as Negative (i.e. no error detected). 
 However, when passed as a contextual sentence 'We dont understant each other', the Semi-Character Classifer classifier it as Positive whereas the one-hot based classifier classified it as Negative.
@@ -432,6 +432,9 @@ Now, what are some of the major problems:
 <li>The one-hot model classifies the first word mostly as Positive</li>
 <li>It doesn't consider punctuations.</li>
 </ul>
+
+So, I would honestly say NO !!
+
 What can be done to make it better:
 <ul>
 <li>Train on a more bigger dataset.</li>
