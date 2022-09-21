@@ -10,6 +10,34 @@ draft: true
 ---
 This project aims to detect spelling errors in a given sentence using a Deep Learning approach.
 
+
+<html>
+<head>
+<style>
+figure {
+    border: 1px dotted gray;
+    margin: 20px; /* adjust as needed */
+}
+figure figcaption {
+    border: 1px dotted blue;
+    text-align: center;
+}
+
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg .tg-46ru{background-color:#96fffb;border-color:inherit;text-align:left;vertical-align:top}
+.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+.tg .tg-fymr{border-color:inherit;font-weight:bold;text-align:left;vertical-align:top}
+.tg .tg-elvq{background-color:#fffc9e;border-color:inherit;text-align:left;vertical-align:top}
+
+
+</style>
+</head>
+<body>
+
 <div>
 <p><b>CONTENTS</b></p>
 <ol>
@@ -29,6 +57,8 @@ This project aims to detect spelling errors in a given sentence using a Deep Lea
 <p>
 <div id ="div1">
 <b><li>INTRODUCTION </b><br>
+
+
 The advent of computers into almost all spheres of human-life has made us more dependent on the keypad to convey information rather than filling out forms by hand. 
 The use of a keypad (physical or virtual as in a smartphone) has enabled us to read legibly unlike the instance when one can't decipher the handwriting inscribed on a letter. 
 But, human beings are still prone to make spelling errors. In this project, we try to detect spelling errors in an English language input text.
@@ -61,16 +91,16 @@ Some of them that can be used by future students who are conducting research on 
 
 <li><b>BEA-60k</b></li>
 It is a dataset collected by the team who developed the <a href="https://github.com/neuspell#Installation" > NeuSpell </a> spelling correction toolkit. It is made up of close to 70K spelling errors in around 63000 sentences.
-<p> For this project, we splitted the data equally (50-50) as our validation and test set.
+<p> For this project, we divided the data equally (50-50) as our validation and test set.
 </ol>
 </div>
 
-<div id="div4"><li><b>Data Encoding</b></li>
+<div id="div4"><li><b>DATA ENCODING</b></li>
 An important task when working with textual data for a Deep Learning model (or any Machine Learning model) is to decide on the encoding technique. We need a mechanism by which we convey our textual data into a numerical format which our models can read and learn to optimise.
 As part of this project we experimented with two such encoding techniques as discussed below:
 <ol>
 <li><b>Semi-Character Vector</b></li>
-This technique was introduced in the 2017 paper by Sakaguchi et. al in their paper titled <a href="https://arxiv.org/pdf/1608.02214.pdf">Robsut Wrod Reocginiton via Semi-Character Recurrent Neural Network</a>.
+This technique was introduced in the 2017 paper by Sakaguchi et al. in their paper titled <a href="https://arxiv.org/pdf/1608.02214.pdf">Robsut Wrod Reocginiton via Semi-Character Recurrent Neural Network</a>.
 Human beings often can understand words in a sentence even if a word is misspelled.
 Here the authors used on the research conducted by other Scientists to understand the level of difficulty faced by humans to decipher a word based on the position at which a spelling error occurred in a word.
 
@@ -86,22 +116,22 @@ In case of (a), the INTernal words were swapped whereas in (b) the ENDing charac
 Overall, the difficulty in reading jumbled words can be summarized as: N ≤ INT < END < BEG where N denotes No error. 
 Thus we see that the beginning letter and the ending letter have more importance in human word recognition. 
 
-<p>We use this principle to construct a word vector which is made up of three sub-vectors (bn, in, en) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. They are same as the one-hot representations.
-The second sub-vector _in_ represents the character count of each word except the first and last word.
+<p>We use this principle to construct a word vector which is made up of three sub-vectors \(b_{n},i_{n},e_{n}\) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. They are same as the one-hot representations.
+The second sub-vector \(i_{n}\)  represents the character count of each word except the first and last word.
 Refer the below figure for a sample word vector for the word 'Dictionary'.
 <figure>
-<img src="assets/semi_character_example.png">
-<figcaption>An example of the Semi-Character Vector for the word Dictionary</figcaption>
+<img src= "assets/semi_character_example.png">
+<figcaption>Fig 1. An example of the Semi-Character Vector for the word Dictionary</figcaption>
 </figure>
-<p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
-we have a word vector of shape 5* 156 (5 words * (bn+in+en)) which is passed as input to our model. 
+<p>So, considering we have a 5-word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
+we have a word vector of shape 5* 156 (5 words * (\(b_{n}+i_{n}+e_{n}\))) which is passed as input to our model. 
 
 <li><b>Character level One-hot Encoding</b></li>
 <p>One-hot encoding is often used in the field of Machine learning to encode categorical data into numerical data.
 It is a binary representation vector wherein a categorical class' index is assigned a positive value (1) and rest all indexes have a negative (0) value.
 <p>However, we can extend this concept further and use it to encode a Word at Character level where our Vocabulary set is made up of the alphabets of the language. This is same as the bn and en vectors created in section <a href="#div4">4.i</a>
 
-<p>So, considering the same five word sentence used for the Semi-Character example (i.e. My favourite dictionary is Oxford) , 
+<p>So, considering the same 5-word sentence used for the Semi-Character example (i.e. My favourite dictionary is Oxford) , 
 we will have a One-hot vector of shape 33*53 where 33 is length of the sentence and 53 is the length of the vocabulary.
 This means that every single character has a vector associated with it. 
 In the vocabulary set we add an additional vector to account for Spaces in the sentence. Hence, the vocabulary length now becomes 52+1 = 53.
@@ -109,7 +139,7 @@ In the vocabulary set we add an additional vector to account for Spaces in the s
 </ol>
 </div>
 
-<div id="div5"><li><b>Models:</b></li>
+<div id="div5"><li><b>MODELS:</b></li>
 As part of this project, we mainly used the LSTM networks for our analysis. Below we give a briefly introduce what are Recurrent Neural Networks (RNN) and LSTM networks.
 
 <ol>
@@ -117,7 +147,7 @@ As part of this project, we mainly used the LSTM networks for our analysis. Belo
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. They are typically as follows:
 <figure style="align-content: center">
 <img src="assets/rnn_demo_stanford.png">
-<figcaption style="align-content: center">Fig 2:A block diagram of a generic RNN network</figcaption>
+<figcaption style="align-content: center">Fig 2. A block diagram of a generic RNN network</figcaption>
 </figure>
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
 However, RNN networks also experience a phenomena known as exploding/vanishing gradient problem. It happens when the network finds it difficult to capture long term dependencies because of multiplicative gradient that can be exponentially decreasing/increasing with respect to the number of layers.
@@ -137,7 +167,7 @@ Due to this, networks can now learn from sequences that are of longer length.
 </div>
 
 <div id="div6">
-<li><b>Dataset Preparation:</b></li>
+<li><b>DATASET PREPARATION:</b></li>
 <ol>
 <p>
 <li><b>Training:</b></li>
@@ -152,9 +182,13 @@ For our experiments, the models were shown two context words before and after th
 <p>For the non-context based approach, we extracted all the individual words from 200,000 Wikipedia articles and filtered out the words which occurred less than 20 times. This additional filtering had to be done to remove words that were misspelt or words that occured very rarely in the encyclopedia. The final training dataset contained 1,47,011 words.
 <p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 5000 wikipedia articles. The final dataset contained 17,43,076 5-gram pairs.
 
-<p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig 1). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
-<img src="assets/img_1.png">
-
+<p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. 
+For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset <a href="#fig3">(Fig 3)</a>. Based on the results, we decided to set 60 characters as the maximum length of the vector. 
+So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
+<figure>
+<img id="fig3" src="assets/img_1.png">
+<figcaption style="align-content: center">Fig 3. A histogram plotting the size of 5-word sentences (X-axis). As seen here, curve tapers after 60.</figcaption>
+</figure>
 <li><b>Real-time Error generation:</b></li>
 <p>Since we are following a Supervised learning approach, our models need to be trained to distinguish between Positive and Negative Samples by having training it on Positive and Negative Samples.
 However, we assume that our dataset is a clean dataset i.e. without any errors. Hence, we introduce errors manually during the training epochs.
@@ -175,17 +209,6 @@ The BEA-60k dataset was modified as collection of positive and negative sample o
 So,the final dataset size was
 
 
-<style type="text/css">
-.tg  {border-collapse:collapse;border-spacing:0;}
-.tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-  font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-.tg .tg-46ru{background-color:#96fffb;border-color:inherit;text-align:left;vertical-align:top}
-.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
-.tg .tg-fymr{border-color:inherit;font-weight:bold;text-align:left;vertical-align:top}
-.tg .tg-elvq{background-color:#fffc9e;border-color:inherit;text-align:left;vertical-align:top}
-</style>
 <table class="tg">
 <thead>
   <tr>
@@ -229,11 +252,13 @@ So,the final dataset size was
 
 </div>
 
-<div id = "div7"><li><b>Training:</b></li>
-The models were trained on 4 Nvidia Titan X (Pascal) GPUs. The below table lists some of the important hyperparameters used during the training.
+<div id = "div7"><li><b>TRAINING:</b></li>
+The models were trained on 4 Nvidia Titan X (Pascal) GPUs. 
+The below table lists some of the important hyperparameters used during the training.
+<a href="#fig4">Fig.4</a> shows the some of the important training metrics.
 
 
-<table>
+<table style="margin-left:10%; margin-right: 10%" >
 <tr>
 <th></th>
 <th>LSTM without context</th>
@@ -242,7 +267,7 @@ The models were trained on 4 Nvidia Titan X (Pascal) GPUs. The below table lists
 </tr>
 
 <tr>
-<td>encoding</td>
+<td>Encoding</td>
 <td>Semi-Character</td>
 <td>Semi-Character</td>
 <td>One-hot encoding</td>
@@ -285,13 +310,18 @@ The models were trained on 4 Nvidia Titan X (Pascal) GPUs. The below table lists
 
 </table>
 
-<img src="assets/pic_all_graphs.png">
 
+<figure>
+<img id='fig4' src="assets/pic_all_graphs.png">
+<figcaption>Fig 4. Some important metrics of the training phase.</figcaption>
+</figure>
 </div>
 
-<div id="div8"><li><b>Results:</b></li>
-The table below shows the accuracy that was achieved on the test dataset and the corresponding F1 Score. Further we also have plotted the Confusion Matrix for the same dataset. lIt is clearly evident that Context based models outperfom non-context based model.  
-<table>
+<div id="div8"><li><b>RESULTS:</b></li>
+The table below shows the accuracy that was achieved on the test dataset and the corresponding F1 Score. 
+Further we also have plotted the <a href="https://en.wikipedia.org/wiki/Confusion_matrix">Confusion Matrix</a> for the same dataset. 
+It is clearly evident that Context based models outperform non-context based model.  
+<table style="margin-left:25%; margin-right: 25%">
 
 <tr>
 <th></th>
@@ -318,26 +348,16 @@ The table below shows the accuracy that was achieved on the test dataset and the
 </tr>
 </table>
 
-
-<img src="assets/cm_lstm_wo_context.png" >
-    <figcaption>Confusion Matrix for LSTM Without Context</figcaption>
-
-
 <figure>
-<img src="assets/cm_lstm_w_context_ckpt43.png">
-    <figcaption>Confusion Matrix for LSTM With Context Semi Character</figcaption>
-</figure>
-
-<figure>
-<img src="assets/cm_lstm_onehot_ckpt37.png">
-    <figcaption>Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
+<img id='fig5' src="assets/cm_all_Screenshot.png" >
+    <figcaption>Fig 4. Confusion Matrix of the models on the test dataset</figcaption>
 </figure>
 
 
 
 <p><b>Examples of Good and Bad evaluations:</b>
 
-<table>
+<table style="margin-left:20%; margin-right: 20%">
 <tr>
 <td>Test Sentence:</td> 
 <td>The quick brown fox jumps Over the lazy dog</td>
@@ -362,7 +382,7 @@ The table below shows the accuracy that was achieved on the test dataset and the
 
 Another Example:
 
-<table>
+<table style="margin-left:10%; margin-right: 10%">
 <tr>
 <td>Test Sentence:</td> 
 <td>An impartial invstigation into the crash was conducted by the agency</td>
@@ -388,14 +408,17 @@ Another Example:
 </div>
 
 <div id="div9">
-<li>Observations:</li>
+<li><b>OBSERVATIONS:</b></li>
 <ul>
 <li><b>Does Context really Matter ?</b></li>
-<p>As seen from the results in Section 7 and on playing with the console (or webapp), one can easily see that having context improves the score. 
+<p>As seen from the results in <a href="#div8"> Section 8 </a> and on playing with the console (or webapp), one can easily see that having context improves the score. 
 However, let us compare some examples from the test dataset.
-<p>Consider the incorrectly spelt word understant. The Non-context classifier classified it as Negative (i.e. no error detected). 
-However, when passed as a contextual sentence 'We dont understant each other', the Semi-Character Classifer classifier it as Positive whereas the one-hot based classifier classified it as Negative.
-<p>Similarly, the word 'appresiate'. The non-context classifier classified it as Negative. However, both the Context based classifier classified it as Positive when provided the context sentence as 'I really appresiate my host'.
+<p>Consider the incorrectly spelt word <i>understant</i>. The Non-context classifier classified it as Negative (i.e. no error detected). 
+However, when passed as a contextual sentence <i>We dont understant each other</i>, the Semi-Character Classifer classifier it as Positive whereas the one-hot based classifier classified it as Negative.
+
+<p>Similarly, the word <i>appresiate</i>. 
+The non-context classifier classified it as Negative. 
+However, both the Context based classifier classified it as Positive when provided the context sentence as <i>I really appresiate my host</i>.
 
 <li><b>One-hot encoded vectors are faster</b></li>
 A closer look at the training plots placed in <a href="#div8">Section 8</a> shows the orange line reaching better metric levels faster than the semi-character encodings. 
@@ -411,8 +434,8 @@ Hence, any spelling detection model should be provided the actual case in which 
 </div>
 
 <div id="div11">
-<li><b>The Million Dollar Question</b></li>
-<p><b><i>Will I use my spell-checker for my next big revolutionary Word Processing Software?</i></b></p>
+<li><b>The Million Dollar Question:</b></li>
+<p><b><i>"Will I use my spell-checker for my next big revolutionary Word Processing Software?"</i></b></p>
 Let's discuss some advantages of these models:
 <ul>
 <li>It can detect spelling errors</li>
@@ -438,3 +461,10 @@ What can be done to make it better:
 
 </ol>
 
+<h4>Acknowledgements:</h4>
+<p> I would like to thank Mr. Matthias Hertel for supervising this project and providing valuable suggestions and prompt responses whenever approached.
+</p>
+
+
+</body>
+</html>

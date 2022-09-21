@@ -47,20 +47,22 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
 
 ### Input Arguments
 
-| Name            | Datatype | Default Values<br/>Semi-Character with Context | Default Values<br/>Semi-Character without Context        | Default Values<br/>One-hot encoded with context              |
-|-----------------|----------|------------------------------------------------|----------------------------------------------------------|--------------------------------------------------------------|
-| data_folder     | String   | data                                           | data                                                     | data                                                         |
-| output_root     | String   | results                                        | results                                                  | results                                                      |
-| input_file      | String   | dev_10.jsonl                                   | top_100_words.json                                       | dev_10.jsonl                                                 |
-| val_file        | String   | 'bea60k.repaired.val/bea60_sentences_val_truth_and_false.json| bea60k.repaired.val/bea60_words_val_truth_and_false.json | bea60k.repaired.val/bea60_sentences_val_truth_and_false.json |
-| epochs          | int      | 10                                             | 10                                                       | 10                                                           |
-| lr              | float    | 0.001                                          | 0.01                                                     | 0.001                                                        |
-| bs              | int      | 1000                                           | 1000                                                     | 32                                                           |
-| hidden_dim      | int      | 100                                            | 100                                                      | 100                                                          |
-| hidden_layers   | int      | 2                                              | 2                                                        | 2                                                            |
-| max_len         | int      | _NA_                                           | _NA_                                                     | 60                                                           |
-| lower_case_mode | bool     | False                                          | NA                                                       | False                                                        |
-| mode            | String   | train                                          | train                                                    | train                                                        |
+| Name            | Datatype | Default Values<br/>Semi-Character with Context                | Default Values<br/>Semi-Character without Context           | Default Values<br/>One-hot encoded with context              |
+|-----------------|----------|---------------------------------------------------------------|-------------------------------------------------------------|--------------------------------------------------------------|
+| data_folder     | String   | data                                                          | data                                                        | data                                                         |
+| output_root     | String   | results                                                       | results                                                     | results                                                      |
+| input_file      | String   | dev_10.jsonl                                                  | top_100_words.json                                          | dev_10.jsonl                                                 |
+| val_file        | String   | 'bea60k.repaired.val/bea60_sentences_val_truth_and_false.json | bea60k.repaired.val/bea60_words_val_truth_and_false.json    | bea60k.repaired.val/bea60_sentences_val_truth_and_false.json |
+| epochs          | int      | 10                                                            | 10                                                          | 10                                                           |
+| lr              | float    | 0.001                                                         | 0.01                                                        | 0.001                                                        |
+| bs              | int      | 1000                                                          | 1000                                                        | 32                                                           |
+| hidden_dim      | int      | 100                                                           | 100                                                         | 100                                                          |
+| hidden_layers   | int      | 2                                                             | 2                                                           | 2                                                            |
+| max_len         | int      | _NA_                                                          | _NA_                                                        | 60                                                           |
+| lower_case_mode | bool     | False                                                         | NA                                                          | False                                                        |
+| mode            | String   | train                                                         | train                                                       | train                                                        |
+| eval_model_path | String   | trained_models/semi_character_w_context.pth                   | trained_models/semi_character_wo_context.pth                | trained_models/onehot_w_context.pth                          |   
+| eval_file       | String   | bea60k.repaired.test/bea60_sentences_test_truth_and_false.json| bea60k.repaired.test//bea60_words_test_truth_and_false.json | bea60k.repaired.test//bea60_sentences_test_truth_and_false.json|
 
 
 ### Directory Structure
@@ -68,9 +70,13 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
 ```
 |-- Makefile
 |-- README.md
+|-- Dockerfile
+|-- results
+|-- runs
 |-- application
 |   |-- Model.py
 |   |-- __init__.py
+|   |-- app.py
 |   |-- lstm_spell_classifier_w_context.py
 |   |-- lstm_spell_classifier_w_context_onehot.py
 |   |-- lstm_spell_classifier_wo_context.py
@@ -79,13 +85,23 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
 |   |-- utils
 |-- bashrc
 |-- data
-|   |-- bea60k.repaired.test
-|   |-- bea60k.repaired.val
-|   |-- top_all_words_over_100000_lowercase.json
-|   |-- top_all_words_over_200000.json
-|   |-- training_1000.jsonl
-|   |-- training_200000_lines.jsonl
-|   |-- training_5000.jsonl
+|-- trained_models
 `-- requirements.txt
 
 ```
+Folder/file definitions
+
+
+| Folder         | Description                                                                                       |
+|----------------|---------------------------------------------------------------------------------------------------|
+| results        | The output folder for an experiment gets generated here and houses the saved models and log files |
+| runs           | Contains the tensorboard metrics logs.                                                            |
+| application    | Contains the important codes related to our application                                           |
+| data           | The data files needed which serve as input to our models                                          |
+| trained_models | Contains the pretrained models which can be used for evaluation purpose.                          |
+
+
+
+
+
+
