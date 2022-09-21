@@ -23,15 +23,10 @@ COPY README.md .
 RUN chmod +x application//run_tests.sh
 EXPOSE 8050
 
-#COPY data/bea60k.repaired/ data/bea60k.repaired/
-#COPY data/bea60k.repaired.test/ data/bea60k.repaired.test/
-#COPY data/bea60k.repaired.val/ data/bea60k.repaired.val/
-#COPY data/top_all_words_over_200000.json data/top_all_words_over_200000.json
-#COPY data/dev_10.jsonl data/dev_10.jsonl
 RUN pip install -r requirements.txt
 
 CMD ["/bin/bash", "--rcfile", "bashrc"]
 
 # docker build -t stanley-george-spelling-error-detection .
-# docker run -it -v $(pwd)/path/to/input:/input:ro -v $(pwd)/path/to/output:/output:rw --name stanley-george-spelling-error-detection stanley-george-spelling-error-detection
-# docker run -it gpus all stanley-george-spelling-error-detection .
+# docker run -it --gpus=all --name stanley-george-project -v /nfs/students/stanley-george/data:/app/data/ stanley-george-project
+# Please check README for a detalied walkthrough
