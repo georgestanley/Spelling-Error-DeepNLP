@@ -37,8 +37,6 @@ def initialize_models():
     device = 'cuda'
     ###### LOAD THE MODELS ######
 
-    PATH_SEMI_CHARACTER = "D://Freiburg//MasterProject//results//lstm_context" \
-                          "//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
     PATH_SEMI_CHARACTER = args.model1_path
     model_semi_character_w_context, _, _ = lstm_spell_classifier_w_context.initialize_model(hidden_dim=512,
                                                                                             hidden_layers=2,
@@ -59,8 +57,6 @@ def initialize_models():
     model_one_hot.eval()
 
     ######
-    PATH_WO_CONTEXT = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models" \
-                      "//ckpt_best_49.pth "
     PATH_WO_CONTEXT = args.model3_path
     model_semi_character_wo_context, criterion, _ = lstm_spell_classifier_wo_context.initialize_model(n_hidden_layers=2,
                                                                                                       hidden_dim=1024,

@@ -49,6 +49,7 @@ class RNN(nn.Module):
         return torch.zeros(1, self.hidden_size)
 '''
 
+
 class LSTMModelForOneHotEncodings(nn.Module):
     def __init__(self, input_dim, hidden_dim, layer_dim, output_dim, device):
         super(LSTMModelForOneHotEncodings, self).__init__()
@@ -68,7 +69,8 @@ class LSTMModelForOneHotEncodings(nn.Module):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
         print(x.shape)
-        self.lstm.flatten_parameters()  # https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506#
+        self.lstm.flatten_parameters()  # https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using
+        # -rnn-with-dataparallel/46506#
 
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)
 
@@ -77,7 +79,9 @@ class LSTMModelForOneHotEncodings(nn.Module):
 
         out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
 
-        out = torch.stack([out[i, length] for i, length in enumerate(sequence_lengths)]).to(self.device) # sequence_lengths is an array containing the length of each sequence without padding
+        out = torch.stack([out[i, length] for i, length in enumerate(sequence_lengths)]).to(self.device)
+        # sequence_lengths is an array containing the length of each sequence without padding
+
         out = self.fc(out)
 
         return out
@@ -101,7 +105,8 @@ class LSTMModel(nn.Module):
     def forward(self, x):
         # x: Tensor(500,1,228)
         # Initialize hidden state with zeros
-        self.lstm.flatten_parameters() #https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506
+        self.lstm.flatten_parameters()
+        # https://discuss.pytorch.org/t/why-do-we-need-flatten-parameters-when-using-rnn-with-dataparallel/46506
 
         h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim).requires_grad_().to(self.device)
 
