@@ -20,11 +20,13 @@ class Test_lstm_w_context_onehot(TestCase):
         test_array = np.array(['Big Brother is a fictional character from the world of television hsitory and has been '
                                'there for ages. it needs to be seen how long it goes !',
                                'Freiburg is a city situated in the black-forest region of Germany.'])
-        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=False), test_array)
+        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=False),
+                                      test_array)
         test_array = np.array(['big brother is a fictional character from the world of television hsitory and has been '
                                'there for ages. it needs to be seen how long it goes !',
                                'freiburg is a city situated in the black-forest region of germany.'])
-        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=True), test_array)
+        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=True),
+                                      test_array)
         return
 
     def test_get_bea60_data(self):

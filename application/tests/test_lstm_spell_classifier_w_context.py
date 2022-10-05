@@ -19,11 +19,13 @@ class Test_lstm_w_context(TestCase):
         test_array = np.array(['Big Brother is a fictional character from the world of television hsitory and has been '
                                'there for ages. it needs to be seen how long it goes !',
                                'Freiburg is a city situated in the black-forest region of Germany.'])
-        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=False), test_array)
+        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=False),
+                                      test_array)
         test_array = np.array(['big brother is a fictional character from the world of television hsitory and has been '
                                'there for ages. it needs to be seen how long it goes !',
                                'freiburg is a city situated in the black-forest region of germany.'])
-        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=True), test_array)
+        np.testing.assert_array_equal(get_wikipedia_text('application//tests//test_file.jsonl', lower_case=True),
+                                      test_array)
         return
 
     def test_remove_punctuation(self):
@@ -68,17 +70,14 @@ class Test_lstm_w_context(TestCase):
         self.assertIsInstance(dataloader_2, torch.utils.data.dataloader.DataLoader)
 
     def test_initialize_model(self):
-
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model, criterion, optimizer = initialize_model(hidden_dim=100, hidden_layers=2, lr=0.001, device=device)
         self.assertIsInstance(model, torch.nn.parallel.DataParallel)
         self.assertIsInstance(criterion, torch.nn.modules.loss.CrossEntropyLoss)
         self.assertIsInstance(optimizer, torch.optim.Adam)
 
-        output = model(torch.rand(1841,5,228))
-        self.assertEqual(output.shape,torch.Size([1841,2]))
-
-
+        output = model(torch.rand(1841, 5, 228))
+        self.assertEqual(output.shape, torch.Size([1841, 2]))
 
     def test_binarize(self):
         token = 'hyperbole'
@@ -109,7 +108,7 @@ class Test_lstm_w_context(TestCase):
 
         self.assertEqual(torch.Size([1, 5, 228]), X_vec.shape)
         self.assertEqual(torch.Size([1, 1]), Y_vec.shape)
-        self.assertEqual((1,5), np.shape(X_token))
+        self.assertEqual((1, 5), np.shape(X_token))
 
     def test_insert_errors(self):
         dataset_old = np.array([[
@@ -165,7 +164,5 @@ class Test_lstm_w_context(TestCase):
         np.testing.assert_array_equal(generate_N_grams_valdata(dataset_old)[1], dataset_new[1])
 
 
-
 if __name__ == '__main__':
-
     unittest.main()

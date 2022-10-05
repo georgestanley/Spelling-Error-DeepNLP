@@ -327,7 +327,8 @@ def train_model(train_loader, model, criterion, optim, writer, epoch, logger):
         # print("X_vec shape after:",X_vec.shape)
 
         outputs = model(X_vec,
-                        sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len) , output: Tensor(batch_len,
+                        sent_len)  # X_vec: Tensor(batch_len_with_errors,max_len=60,77) , sent_len: Tensor(batch_len)
+        # , output: Tensor(batch_len,
         loss = criterion(outputs, Y_vec)
         _, predicted = torch.max(outputs.data, 1)
         correct += (predicted == Y_vec).sum()

@@ -114,7 +114,6 @@ def generate_N_grams(data, ngram=5):
     new_dataset = []
 
     for n, text in tqdm(enumerate(data)):
-        # TODO https://www.analyticsvidhya.com/blog/2021/09/what-are-n-grams-and-how-to-implement-them-in-python/#:~:text=N%2Dgrams%20are%20continuous%20sequences,(Natural%20Language%20Processing)%20tasks.
 
         r = r'\S*\d+\S*'  # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
         text = re.sub(r, '', text)
@@ -323,8 +322,8 @@ def val_model(val_loader, model, criterion, logger, writer, epoch):
         logger.info(
             f"mean_val_loss:{mean_val_loss} mean_val_acc:{mean_val_accuracy} , f1_score={f1},total_correct={correct},"
             f"total_samples={total}")
-    # accuracy = 100 * correct / total
-    # print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item()} accuracy= {accuracy} f1_Score={f1}")
+    # accuracy = 100 * correct / total print(f" Word = {X_token[600]} Prediction= {predicted[600]} loss = {loss.item(
+    # )} accuracy= {accuracy} f1_Score={f1}")
     save_in_log(writer, epoch, scalar_dict=scalar_dict)
 
     return mean_val_loss, mean_val_accuracy.cpu(), f1
@@ -573,10 +572,12 @@ def main(args, device):
 
 
 def test_model():
-    PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models//ckpt_best_43.pth"
+    PATH = "results//lstm_context//lr0.001_bs512_optimAdam_hidden_dim512_hidden_layers2_//20220803122815_models" \
+           "//ckpt_best_43.pth "
     PATH = args.eval_model_path
 
-    # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
+    # val_data = get_bea60_data(os.path.join(args.data_folder,
+    # 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
     val_data = get_bea60_data(
         os.path.join(args.data_folder, args.eval_file))

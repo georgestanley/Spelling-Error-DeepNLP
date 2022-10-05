@@ -404,9 +404,11 @@ def main(args):
 
 
 def test_model():
-    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models//ckpt_best_47.pth"
+    PATH = "results//lstm_noncontext//lr0.01_bs1024_optimAdam_hidden_dim1024_hidden_layers2_//20220802190816_models" \
+           "//ckpt_best_47.pth "
     PATH = args.eval_model_path
-    # val_data = get_bea60_data(os.path.join(args.data_folder, 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
+    # val_data = get_bea60_data(os.path.join(args.data_folder,
+    # 'bea60k.repaired.test//bea60_sentences_test_truth_and_false.json'))
 
     val_data = get_wikipedia_words(os.path.join(args.data_folder, args.eval_file))
     # This function is also compatible with BEA-60k words dataset. So no function has been reused
