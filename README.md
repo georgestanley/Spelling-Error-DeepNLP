@@ -1,14 +1,14 @@
 # Spelling-Error-Detection
 
 Steps to reproduce:
-1. Clone the Github / SVN repo
+1. Clone the Github / SVN repo (for people from Chair of Prof. Bast)
 ```
 git clone https://github.com/georgestanley/Spelling-Error
 
 svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
 
 ```
-2. Go to the respective working branch
+2. Go to the respective working branch (Do this only if specifically mentioned by someone)
 3. Create a docker image by the following steps:
    1. Build the Image:
    
@@ -43,7 +43,11 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
    
       `python -m application.tests.test_lstm_spell_classifier_w_context`
 
-5. GUI
+5. Makefile
+   1. Type `make` to see the possible options
+   2. Type `make start_app_console` to start the app in the console mode
+   3. Type `make start_app_webapp` to start the app as a Webapp made using Dash
+   4. Type `make start_app_file_eval` to start the app and test a text file
 
 ### Input Arguments
 
