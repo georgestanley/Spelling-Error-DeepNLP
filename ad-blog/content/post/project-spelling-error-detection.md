@@ -133,7 +133,8 @@ For our experiments, the models were shown two context words before and after th
 <p>For the non-context based approach, we extracted all the individual words from Wikipedia articles and filtered out the words which occurred more than 20 times. This additional filtering had to be done to remove words that were misspelt or words that occured very rarely in the encyclopedia. The final dataset contained ****** words.
 <p>As for the context based approach,we didn't need to do any extra preparation tasks. However, due to the limitations with GPU compute, we trained only on a randomly selected corpus of 1000 wikipedia articles. The final dataset contained ******** 5-gram pairs.
 
-<p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig **). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
+<p>For the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (Fig 1). Based on the results, we decided to set 60 characters as the maximum length of the vector. So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences padded shorter than 60 would be given extra right-end paddings.
+<img src="/ad-blog/static/img/project-spelling-error-detection/sentence_length_distribution.png">
 
 <li>Evaluation:</li>
 The BEA-60k dataset was modified as collection of positive and negative sample of 5-word sentences. So,the final dataset size was
