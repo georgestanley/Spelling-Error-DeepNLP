@@ -1,6 +1,9 @@
 # Spelling-Error-Detection
+**Project Report**
 
-Steps to reproduce:
+The project report (as a blogpost) can be found at [project-spelling-error-detection.md](project-spelling-error-detection.md)
+
+**Steps to reproduce:**
 1. Clone the Github / SVN repo (for people from Chair of Prof. Bast)
 ```
 git clone https://github.com/georgestanley/Spelling-Error
