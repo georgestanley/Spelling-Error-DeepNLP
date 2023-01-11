@@ -1,20 +1,23 @@
-import collections
-
-import pandas as pd
-import string, argparse, json, os, re
+import argparse
+import json
+import matplotlib.pyplot as plt
 import numpy as np
-import torch
-from torch import nn
-from .Model import LSTMModel
+import os
+import pandas as pd
+import re
+import string
 import sys
-from tqdm import tqdm
+import torch
+from datetime import datetime
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from .Model import LSTMModel
 from .utils.utils import get_rand01, check_dir, int2char, get_logger, plot_graphs, save_in_log, get_rand123, \
     f1_score_manual, str2bool
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from datetime import datetime
-from torch.utils.tensorboard import SummaryWriter
-import matplotlib.pyplot as plt
 
 all_letters = string.ascii_letters + " .,;'"
 n_letters = len(all_letters)
@@ -115,7 +118,8 @@ def generate_N_grams(data, ngram=5):
 
     for n, text in tqdm(enumerate(data)):
 
-        r = r'\S*\d+\S*'  # Remove alpha-num words ; https://stackoverflow.com/a/65105960/5959601
+        r = r'\S*\d+\S*'  # Remove alpha-num words ;
+        # https://stackoverflow.com/a/65105960/5959601
         text = re.sub(r, '', text)
         text = text.split()
         text[:] = [tup for tup in text if tup.isalpha()]
@@ -213,7 +217,7 @@ def convert_to_pytorch_dataset(train_data, val_data, batch_size):
 def initialize_model(hidden_dim, hidden_layers, lr, device):
     input_dim = alph_len * 3
 
-    hidden_dim = hidden_dim  # TODO : Iterate over different hidden dim sizes
+    hidden_dim = hidden_dim
     layer_dim = hidden_layers
     output_dim = 2
 
