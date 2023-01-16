@@ -97,7 +97,7 @@ Refer the below figure for a sample word vector for the word 'Dictionary'.
 <img src="assets/semi_character_example.png">
 <figcaption>An example of the Semi-Character Vector for the word Dictionary</figcaption>
 </figure>
-<p>So, considering we have a five words sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
+<p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
 we have a word vector of shape 5* 156 (5 words * (\(b_{n}+i_{n}+e_{n}\)))  which will be passed on as the input to our model.
 
 <li><b>Character level One-hot Encoding</b></li>
