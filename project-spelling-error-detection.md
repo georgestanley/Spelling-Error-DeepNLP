@@ -94,7 +94,7 @@ They are analogous to the one-hot representation technique which is popular in t
 The second sub-vector _in_ represents the character count of each word except the first and last word.
 Refer the below figure for a sample word vector for the word 'Dictionary'.
 <figure>
-<img src="/img/project-spelling-error-detection/semi_character_example.png">
+<img src="assets/semi_character_example.png">
 <figcaption>An example of the Semi-Character Vector for the word Dictionary</figcaption>
 </figure>
 <p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
@@ -123,7 +123,7 @@ Below we briefly introduce what are Recurrent Neural Networks (RNN) and LSTM net
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. 
 They can be visusalised as below:
 <figure style="align-content: center">
-<img src="/img/project-spelling-error-detection/rnn_demo_stanford.png">
+<img src="assets/rnn_demo_stanford.png">
 <figcaption style="align-content: center">Fig 2:A block diagram of a generic RNN network</figcaption>
 </figure>
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
@@ -174,7 +174,7 @@ For the same, we plotted a distribution of the length of 5-word sentences of the
 Based on the results, we decided to set 60 characters as the maximum length of the vector. 
 So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences that are lesser than 60 characters would be given extra right-end paddings.
 <figure >
-<img id="fig1" src="/img/project-spelling-error-detection/img_1.png">
+<img id="fig1" src="assets/img_1.png">
 <figcaption style="text-align: center">Fig.1 - Histogram of word-length of every 5-word sentences in the entire dataset. </figcaption>
 </figure>
 
@@ -327,7 +327,7 @@ A code snippet can be found <a href="https://gist.github.com/georgestanley/838bb
 
 
 <figure>
-<img id='fig4' src="/img/project-spelling-error-detection/pic_all_graphs.png">
+<img id='fig4' src="assets/pic_all_graphs.png">
 <figcaption id="fig4" style="text-align: center">Fig 4. Some important metrics of the training phase.</figcaption>
 </figure>
 </div>
@@ -366,16 +366,16 @@ It is clearly evident that Context based models outperform non-context based mod
 <figcaption id="table3" style="text-align: center">Table 3. Accuracy and F1 Score on the test dataset.</figcaption>
 
 
-<img src="/img/project-spelling-error-detection/cm_lstm_wo_context.png" >
+<img src="assets/cm_lstm_wo_context.png" >
 <figcaption id="fig5" style="text-align: center">Fig 5. Confusion Matrix for LSTM Without Context.</figcaption>
 
 <figure>
-<img src="/img/project-spelling-error-detection/cm_lstm_w_context_ckpt43.png">
+<img src="assets/cm_lstm_w_context_ckpt43.png">
 <figcaption id="fig6" style="text-align: center">Fig 6. Confusion Matrix for LSTM With Context Semi Character</figcaption>
 </figure>
 
 <figure>
-<img src="/img/project-spelling-error-detection/cm_lstm_onehot_ckpt37.png">
+<img src="assets/cm_lstm_onehot_ckpt37.png">
 <figcaption id="fig7" style="text-align: center">Fig 7. Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
 </figure>
 
