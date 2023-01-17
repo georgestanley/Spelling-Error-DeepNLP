@@ -18,7 +18,7 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
        ```docker build -t stanley-george-project .```
    2. Run the container. Here we also have to mount the datasets folder if one is interested in training on the complete dataset.
 
-        ```docker run -it --gpus=all --name stanley-george-project -v /nfs/students/stanley-george/data:/app/data/ stanley-george-project```
+        ```docker run -it -p 8050:8050 --gpus=all --name stanley-george-project -v /nfs/students/stanley-george/data:/app/data/ stanley-george-project```
    
    **Note**: To remove an existing image with the same name, use the command:
         
@@ -51,6 +51,8 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
    2. Type `make start_app_console` to start the app in the console mode
    3. Type `make start_app_webapp` to start the app as a Webapp made using Dash (Go to localhost:8050)
    4. Type `make start_app_file_eval` to start the app and test a text file
+   5. Type `make run_unit_tests` to do PEP8 code checkstyle
+   6. Type `make checkstyle` to do PEP8 code checkstyle
 
 ### Input Arguments
 
