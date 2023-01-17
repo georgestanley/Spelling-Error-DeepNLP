@@ -49,7 +49,7 @@ svn co https://ad-svn.informatik.uni-freiburg.de/student-projects/stanley-george
 5. Makefile
    1. Type `make` to see the possible options
    2. Type `make start_app_console` to start the app in the console mode
-   3. Type `make start_app_webapp` to start the app as a Webapp made using Dash
+   3. Type `make start_app_webapp` to start the app as a Webapp made using Dash (Go to localhost:8050)
    4. Type `make start_app_file_eval` to start the app and test a text file
 
 ### Input Arguments
