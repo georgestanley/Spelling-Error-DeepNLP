@@ -6,7 +6,7 @@ authorAvatar: "img/ada.jpg"
 tags: ["deep learning","spelling error","LSTM"]
 categories: []
 image: "img/writing.jpg"
-draft: true
+draft: false
 ---
 This project aims to detect spelling errors in a given sentence using a Deep Learning approach.
 
@@ -60,7 +60,8 @@ Some of them that can be used by future students who are conducting research on 
 </ul>
 
 <li><b>BEA-60k</b></li>
-It is a dataset collected by the team who developed the <a href="https://github.com/neuspell#Installation" > NeuSpell </a> spelling correction toolkit. It is made up of close to 70K spelling errors in around 63000 sentences.
+It is a dataset collected by the team who developed the <a href="https://github.com/neuspell#Installation" > NeuSpell </a> spelling correction toolkit. 
+It is made up of close to 70K spelling errors in around 63000 sentences.
 <p> For this project, we splitted the data equally (50-50) and was used as our validation and test dataset.
 </ol>
 </div>
@@ -71,32 +72,33 @@ We would need a mechanism by which we convert our textual data into a numerical 
 As part of this project we experimented with two such encoding techniques where are discussed below:
 <ol>
 <li><b>Semi-Character Vector</b></li>
-This technique was introduced in the 2017 paper by Sakaguchi et. al in their paper titled <a href="https://arxiv.org/pdf/1608.02214.pdf">Robsut Wrod Reocginiton via Semi-Character Recurrent Neural Network</a>.
+This technique was introduced in the 2017 paper by Sakaguchi et al. in their paper titled <a href="https://arxiv.org/pdf/1608.02214.pdf">Robsut Wrod Reocginiton via Semi-Character Recurrent Neural Network</a>.
 Human beings often can undertsand words in a sentence even if a word is misspelled.(E.g. Look at the last two sentences. There were a couple of misspellings, but you still figured it out !!)
 
 <br>Here the authors built on top of the research conducted by other Scientists (<a href ="https://en.wikipedia.org/wiki/Psycholinguistics">psycholinguists</a>) to understand the level of difficulty faced by humans to decipher a word based on the position at which a spelling error occurred in a word.
 
-<p>Consider the below three senetences.
+<p>Consider the below three sentences:
 <ol>
 <li><i>The boy cuold not slove the probelm so he aksed for help.</i></li>  
 <li><i>The boy coudl not solev the problme so he askde for help.</i></li>
 <li><i>The boy oculd not oslve the rpoblem so he saked for help.</i></li>
 </ol>
 
-It was found that reading sentence (a) and (b) were comparetively easier than (c) because it was the BEGinning characters that were jumbled. 
-In case of (a), the INTernal words were swapped whereas in (b) the ENDing characters were altered. 
+It was found that reading sentence (1) and (2) were comparetively easier than (3) because it was the BEGinning characters that were jumbled. 
+In case of (1), the INTernal words were swapped whereas in (2) the ENDing characters were altered. 
 Overall, the difficulty in reading jumbled words can be summarized as: N ≤ INT < END < BEG where N denotes No error. 
 <b>Thus, we see that the beginning letter and the ending letter have more importance in human word recognition.</b> 
 
 
-<p>We use this principle to construct a word vector which is made up of three sub-vectors (bn, in, en) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. 
+<p>We use this principle to construct a word vector which is made up of three sub-vectors (\(b_{n},i_{n},e_{n})\) that correspond to the characters position. The first and third sub-vectors represent the first and last character of the n-th word. 
 They are analogous to the one-hot representation technique which is popular in the field of Deep Learning.
-The second sub-vector _in_ represents the character count of each word except the first and last word.
+The second sub-vector \(i_{n}\) represents the character count of each word except the first and last word.
 Refer the below figure for a sample word vector for the word 'Dictionary'.
 <figure>
-<img src="assets/semi_character_example.png">
-<figcaption>An example of the Semi-Character Vector for the word Dictionary</figcaption>
+<img id='fig1' src="assets/semi_character_example.png">
+<figcaption style="text-align: center">Fig 1. An example of the Semi-Character Vector generated for the word Dictionary</figcaption>
 </figure>
+<br>
 <p>So, considering we have a five word sentence (e.g. My favourite dictionary is Oxford) as input to the model with a Vocabulary set of 52 elements  (English alphabets in lower and upper case), 
 we have a word vector of shape 5* 156 (5 words * (\(b_{n}+i_{n}+e_{n}\)))  which will be passed on as the input to our model.
 
@@ -123,9 +125,10 @@ Below we briefly introduce what are Recurrent Neural Networks (RNN) and LSTM net
 Recurrent neural networks, also known as RNNs, are a class of neural networks that allow previous outputs to be used as inputs while having hidden states. 
 They can be visusalised as below:
 <figure style="align-content: center">
-<img src="assets/rnn_demo_stanford.png">
-<figcaption style="align-content: center">Fig 2:A block diagram of a generic RNN network</figcaption>
+<img id = 'fig2' src="assets/rnn_demo_stanford.png">
+<figcaption style="text-align: center">Fig 2. A block diagram of a generic RNN network. <a href="https://stanford.edu/~shervine/teaching/cs-230/cheatsheet-recurrent-neural-networks">Source: Stanford CS230 lecture notes</a> </figcaption>
 </figure>
+<br>
 <p>Such networks are mainly used in the field of Natural language processing and Speech recognition. 
 However, RNN networks also experience a phenomena known as exploding/vanishing gradient problem. 
 It happens when the network finds it difficult to capture long term dependencies because of multiplicative gradient that can be exponentially decreasing/increasing with respect to the number of layers.
@@ -170,13 +173,13 @@ However, due to the limitations with GPU compute, we trained only on a randomly 
 The final dataset contained 1,743,076 5-gram pairs.
 
 <p>Additionally, for the one-hot encoding technique, we also needed to decide on the length of the one-hot encoded vector. 
-For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (<a href="#fig1">Fig 1</a>). 
+For the same, we plotted a distribution of the length of 5-word sentences of the entire dataset (<a href="#fig3">Fig 3</a>). 
 Based on the results, we decided to set 60 characters as the maximum length of the vector. 
 So, any 5-word sentences greater than 60 characters would be trimmed to 60 characters and sentences that are lesser than 60 characters would be given extra right-end paddings.
 <figure >
-<img id="fig1" src="assets/img_1.png">
-<figcaption style="text-align: center">Fig.1 - Histogram of word-length of every 5-word sentences in the entire dataset. </figcaption>
-</figure>
+<img id="fig3" src="assets/img_1.png">
+<figcaption style="text-align: center">Fig 3. Histogram of word-length of every 5-word sentences in the entire dataset. </figcaption>
+</figure> 
 
 <li><b>Real-time Error generation:</b></li>
 <p>Since we are following a Supervised learning approach, our models need to be trained to distinguish between Positive and Negative Samples by training it on Positive and Negative Samples.
@@ -191,7 +194,7 @@ Hence, we introduce errors manually during the training epochs.
 <li>Remove a character from a random position</li>
 </ul>
 
-Due to this, in every epoch, the network sees a different negative word thereby avoiding a possible overfitting.
+Due to this, in every epoch, the network sees a different negative word thereby avoiding a possible <a href="https://en.wikipedia.org/wiki/Overfitting"> overfitting </a>.
 
 <li><b>Evaluation Dataset:</b></li>
 <p>
@@ -256,14 +259,13 @@ So,the final dataset size was
 </div>
 
 <div id = "div7"><li><b>TRAINING:</b></li>
+For this project, we used the popular machine learning <a href="https://pytorch.org/docs/stable/index.html">Pytorch</a> which is based on the Torch library.  
 The models were trained on 4 Nvidia Titan X (Pascal) GPUs. 
-This can be done easily (i.e. using multiple GPUs for Parallel training), thanks to Pytorch's nn.DataParallel module.
+This can be done easily (i.e. using multiple GPUs for Parallel training), thanks to <a href="https://pytorch.org/docs/stable/generated/torch.nn.DataParallel.html">Pytorch's nn.DataParallel</a> module.
 A code snippet can be found <a href="https://gist.github.com/georgestanley/838bbd365ac5255815721c7a0a428057">here</a> showing how its implemented.
 <br>The below table lists some important hyperparameters used during the training.
 
-<a href="#fig4">Fig.4</a> shows the some of the important training metrics.
-
-
+<a href="#fig4">Fig 4.</a> shows the some of the important training metrics.
 
 <table style="margin-left: 20% ; margin-right: 20%" >
 <tr>
@@ -365,20 +367,10 @@ It is clearly evident that Context based models outperform non-context based mod
 </table>
 <figcaption id="table3" style="text-align: center">Table 3. Accuracy and F1 Score on the test dataset.</figcaption>
 
-
-<img src="assets/cm_lstm_wo_context.png" >
-<figcaption id="fig5" style="text-align: center">Fig 5. Confusion Matrix for LSTM Without Context.</figcaption>
-
 <figure>
-<img src="assets/cm_lstm_w_context_ckpt43.png">
-<figcaption id="fig6" style="text-align: center">Fig 6. Confusion Matrix for LSTM With Context Semi Character</figcaption>
+<img id="fig5" src="assets/cm_all_Screenshot.png" >
+<figcaption  style="text-align: center">Fig 5. Confusion Matrix for the three models.</figcaption>
 </figure>
-
-<figure>
-<img src="assets/cm_lstm_onehot_ckpt37.png">
-<figcaption id="fig7" style="text-align: center">Fig 7. Confusion Matrix for LSTM With One-Hot Encoding</figcaption>
-</figure>
-
 
 
 <p><b>Some sample evaluations:</b>
@@ -459,26 +451,30 @@ Let us now look at some examples from <a href="#table4">Table 4.</a>
 <p>Consider the third example (<i>We need to appreciat the developer for his efforts</i>). Here, only the context-based models detected the error word. Something similar happens in the fifth example.
 <p>Similarly, the word '<i>appresiate</i>'. The non-context classifier classified it as Negative.
 However, both Context based classifiers classified it as Positive when provided in a contextual sentence as '<i>I really appresiate my host</i>'.
+<p>So, YES, the context matters !!
 
-<li><b>One-hot encoded vectors are faster</b></li>
-A closer look at the training plots placed in <a href="#div8">Section 8</a> shows the orange line reaching better metric levels faster than the semi-character encodings. 
-A possible reason for lies in the underlying concept of one-hot vectors.
+<li><b>One-Hot Encoding OR Semi-Character Encoding ?</b></li>
+A closer look at the training plots placed in <a href="#fig4">Fig 4</a> shows the orange line reaching better metric levels faster than the semi-character encodings. 
+A possible reason for this behaviour lies in the underlying concept of one-hot vectors.
 One-hot vectors are simply character-by-character encoding with no special technique applied.
-On the other hand, the semi-character encoding was a special kind of algorithm for which the model took time to learn but once it understood the encoding, it started producing good results.
-Hence the model learnt faster. 
-This however was also accompanied by an increased compute time and a large memory usage (as observed during the training process). 
+<p>On the other hand, the semi-character encoding was a special kind of algorithm for which the model took time to learn but once it understood the encoding, it started producing good results.
+Hence the model learnt faster.
+<p>This however was also accompanied by an increased compute time and a large memory usage (as observed during the training process).
+The examples shown in <a href="#table4">Table 4</a> show certain errors which were detected only by either of these models.
+<p>Hence, we can't decisively say which one is supreme.
 
-<li><b>The Case matters</b></li>
+<li><b>Does the Case matter ? </b></li>
 At the beginning of writing my code, I was under the assumption that the models would be happy with just the spellings. 
 But just a trial of removing the \({.lower()}\) function resulted in a huge spike in the validation accuracy (~10%).
-<br>Hence, any spelling detection model should be provided with the actual case in which it was written.
+<br>
+<p>Hence, any spelling detection model should be provided with the actual case in which it was written !!
 
 </ul>
 </div>
 
 <div id="div11">
 <li><b>THE MILLION DOLLAR QUESTION:</b></li>
-<p><b><i>Will I use my spell-checker for my next big revolutionary Word Processing Software?</i></b></p>
+<h2 style="color:green"><b>"Will I use my spell-checker for my next big revolutionary Word Processing Software?"</b></h2>
 Let's discuss some advantages of these models:
 <ul>
 <li>It can detect spelling errors</li>
@@ -496,7 +492,7 @@ So, I would honestly say NO !!
 
 What can be done to make it better:
 <ul>
-<li>Train on a more bigger dataset.</li>
+<li>Train on a bigger dataset.</li>
 <li>Expand the alphabet to wisely include punctuations as part of the context.</li>
 <li>A closer look at the results of the test dataset showed some scenarios where only either  of the model was correct. Maybe an ensemble based approach might work here.  </li>
 </ul>
